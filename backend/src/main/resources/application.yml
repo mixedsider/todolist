@@ -1,0 +1,26 @@
+spring:
+  datasource:
+    # 데이터베이스 연결 주소 (todo_db 부분은 실제 생성한 DB 이름으로 변경하세요)
+    url: ${DB_URL}/${DATABASE}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}  # 여기에 실제 MySQL 비밀번호 입력
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+    # 콘솔에 실행되는 SQL 보여주기
+    show-sql: true
+    properties:
+      hibernate:
+        # SQL을 보기 좋게 포맷팅해서 출력
+        format_sql: true
+        # 주석 보여주기 (어떤 로직에서 쿼리가 나갔는지 힌트 제공)
+        use_sql_comments: true
+
+# (선택) 로깅 레벨 설정 - SQL 바인딩 파라미터 값 확인용
+logging:
+  level:
+    org.hibernate.SQL: debug
+    org.hibernate.type.descriptor.sql: trace

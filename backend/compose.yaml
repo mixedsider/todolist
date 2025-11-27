@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:latest
+    container_name: todo-mysql
+    restart: always
+    
+    environment:
+      MYSQL_DATABASE: ${DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      TZ: Asia/Seoul
+
+    ports:
+      - "${DB_PORT}:3306"
+
+    command:
+      # 한글(이모지 포함) 깨짐 방지 설정
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
