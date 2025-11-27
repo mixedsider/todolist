@@ -107,12 +107,14 @@
     "content": "스프링 공부하기",
     "isCompleted": false,
     "createdAt": "2024-01-01T10:00:00"
+    "completedAt": "2024-01-01T10:10:00"
   },
   {
     "id": 2,
     "content": "운동하기",
     "isCompleted": true,
     "createdAt": "2024-01-01T12:00:00"
+    "completedAt": "2024-01-01T12:10:00"
   }
 ]
 ```
@@ -158,6 +160,21 @@ Todo 항목의 완료 상태를 토글합니다.
 #### Response
 
 -   `200 OK`: true / false
+-   `401 Unauthorized`: 로그인하지 않음 또는 본인 Todo가 아님
+
+------------------------------------------------------------------------
+
+### 4. 할 일 삭제
+
+Todo 항목의 완료 상태를 토글합니다.
+
+-   **URL:** `/api/v1/todos/{todoId}`
+-   **Method:** DELETE
+-   **Auth Required:** Yes
+
+#### Response
+
+-   `204 noContent`: 리턴값이 없음
 -   `401 Unauthorized`: 로그인하지 않음 또는 본인 Todo가 아님
 
 ------------------------------------------------------------------------
