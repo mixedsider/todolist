@@ -5,9 +5,12 @@ import eunsungspring.todolist.dto.request.TodoRequest;
 import eunsungspring.todolist.dto.response.TodoResponse;
 import eunsungspring.todolist.service.TodoService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Positive;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -17,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.SessionAttribute;
 
+@Validated
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
@@ -47,9 +51,18 @@ public class TodoController {
   @PatchMapping("/v1/todos/{todoId}")
   public ResponseEntity<Boolean> toggleStatus(
       @SessionAttribute(name = SessionConst.LOGIN_MEMBER_ID) Long memberId,
-      @PathVariable Long todoId) {
+      @Positive @PathVariable Long todoId) {
 
     boolean result = todoService.toggleTodoStatus(todoId, memberId);
     return ResponseEntity.ok(result);
   }
+
+  @DeleteMapping("/v1/todos/{todoId}")
+  public ResponseEntity<Void> deleteTodo(
+      @SessionAttribute(name = SessionConst.LOGIN_MEMBER_ID) Long memberId,
+      @Positive @PathVariable Long todoId ) {
+    todoService.deleteTodo(todoId, memberId);
+    return ResponseEntity.noContent().build();
+  }
+
 }

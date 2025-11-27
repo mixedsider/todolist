@@ -55,4 +55,16 @@ public class TodoService {
 
     return todo.isCompleted();
   }
+
+  @Transactional
+  public void deleteTodo(Long todoId, Long memberId) {
+    Todo todo = todoRepository.findById(todoId)
+        .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 할 일입니다."));
+
+    if (!ObjectUtils.nullSafeEquals(todo.getMember().getId(), memberId)) {
+      throw new IllegalStateException("해당 투두에 대한 권한이 없습니다.");
+    }
+
+    todoRepository.delete(todo);
+  }
 }
