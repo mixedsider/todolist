@@ -1,14 +1,17 @@
 spring:
   datasource:
-    # 데이터베이스 연결 주소 (todo_db 부분은 실제 생성한 DB 이름으로 변경하세요)
-    url: ${DB_URL}/${DATABASE}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    url: jdbc:mysql://${DB_URL}:${DB_PORT}/${DATABASE}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}  # 여기에 실제 MySQL 비밀번호 입력
     driver-class-name: com.mysql.cj.jdbc.Driver
 
+  config:
+    import: "optional:file:../.env[.properties]"
+
   jpa:
     hibernate:
       ddl-auto: update
+
 
     # 콘솔에 실행되는 SQL 보여주기
     show-sql: true
