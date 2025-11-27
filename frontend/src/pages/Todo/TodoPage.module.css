@@ -1,0 +1,315 @@
+.header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+.headerInner {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  font-weight: 800;
+  font-size: 22px;
+  color: #15803d;
+  cursor: pointer;
+}
+
+.logoutButton {
+  padding: 8px 16px;
+  border: 1px solid #cbd5e1;
+  background-color: white;
+  border-radius: 8px;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.logoutButton:hover {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+/* --- 그리드 레이아웃 --- */
+.gridContainer {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 30px;
+  align-items: start;
+  width: 100%;
+}
+
+/* --- 좌측 패널 (대시보드) --- */
+.leftPanel {
+  position: sticky;
+  top: 20px;
+}
+
+.dashboardCard {
+  background-color: white;
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+
+.cardTitle {
+  margin: 0 0 20px 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #334155;
+  text-align: left;
+}
+
+.progressCircleArea {
+  margin-bottom: 15px;
+}
+
+.bigPercent {
+  display: block;
+  font-size: 48px;
+  font-weight: 900;
+  color: #15803d;
+  line-height: 1;
+}
+
+.progressLabel {
+  font-size: 14px;
+  color: #94a3b8;
+  margin-top: 5px;
+  display: block;
+}
+
+.progressBarBg {
+  height: 8px;
+  background-color: #f1f5f9;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 30px;
+}
+
+.progressBarFill {
+  height: 100%;
+  background-color: #22c55e;
+  transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.statRow {
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.statItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.statValue { font-size: 18px; font-weight: bold; color: #334155; }
+.statValueDone { font-size: 18px; font-weight: bold; color: #15803d; }
+.statValueActive { font-size: 18px; font-weight: bold; color: #f59e0b; }
+
+.statLabel {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.divider {
+  width: 1px;
+  height: 24px;
+  background-color: #e2e8f0;
+}
+
+.motivationCard {
+  background-color: #15803d;
+  color: white;
+  margin-top: 20px;
+}
+
+.motivationText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+
+/* --- 우측 패널 (입력 & 리스트) --- */
+.rightPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.inputCard {
+  background-color: white;
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.form {
+  display: flex;
+  gap: 12px;
+}
+
+.input {
+  flex: 1;
+  padding: 14px 20px;
+  font-size: 16px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  outline: none;
+  background-color: #f8fafc;
+  transition: all 0.2s;
+}
+
+.input:focus {
+  background-color: white;
+  border-color: #15803d;
+}
+
+.addButton {
+  padding: 0 24px;
+  background-color: #15803d;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.addButton:hover {
+  background-color: #166534;
+}
+
+.listContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 60px;
+  color: #94a3b8;
+  background-color: white;
+  border-radius: 16px;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: white;
+  padding: 20px 24px;
+  border-radius: 16px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid transparent;
+}
+
+.item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.itemCompleted {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #f8fafc;
+  padding: 20px 24px;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
+  opacity: 0.8;
+}
+
+.itemContent {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+  cursor: pointer;
+}
+
+.checkbox {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  accent-color: #15803d;
+}
+
+.todoText {
+  font-size: 16px;
+  color: #334155;
+  font-weight: 500;
+}
+
+.itemCompleted .todoText {
+  text-decoration: line-through;
+  color: #94a3b8;
+}
+
+.dateInfo {
+  font-size: 12px;
+  margin-left: 10px;
+  text-align: right;
+}
+
+.dateCreated {
+  color: #94a3b8;
+}
+
+.dateCompleted {
+  color: #15803d;
+  font-weight: 600;
+}
+
+.deleteButton {
+  margin-left: 12px;
+  padding: 6px 10px;
+  background-color: transparent;
+  border: 1px solid #fee2e2;
+  border-radius: 8px;
+  color: #ef4444; /* 빨간색 */
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.deleteButton:hover {
+  background-color: #fee2e2;
+  border-color: #ef4444;
+  transform: scale(1.05);
+}
+
+.deleteButton:active {
+  transform: scale(0.95);
+}
