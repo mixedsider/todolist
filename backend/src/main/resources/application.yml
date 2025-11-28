@@ -1,32 +1,17 @@
 spring:
-  datasource:
-    url: jdbc:mysql://${DB_URL}:${DB_PORT}/${DATABASE}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}  # 여기에 실제 MySQL 비밀번호 입력
-    driver-class-name: com.mysql.cj.jdbc.Driver
+  application:
+    name: todolist
+  profiles:
+    default: release
+  web:
+    resources:
+      add-mappings: false
 
-  config:
-    import: "optional:file:../.env[.properties]"
-
-  jpa:
-    hibernate:
-      ddl-auto: update
-
-
-    # 콘솔에 실행되는 SQL 보여주기
-    show-sql: true
-    properties:
-      hibernate:
-        # SQL을 보기 좋게 포맷팅해서 출력
-        format_sql: true
-        # 주석 보여주기 (어떤 로직에서 쿼리가 나갔는지 힌트 제공)
-        use_sql_comments: true
-  docker:
-    compose:
-      enabled: false
-
-# (선택) 로깅 레벨 설정 - SQL 바인딩 파라미터 값 확인용
-logging:
-  level:
-    org.hibernate.SQL: debug
-    org.hibernate.type.descriptor.sql: trace
+management:
+  endpoint:
+    health:
+      show-details: when_authorized
+  endpoints:
+    jmx:
+      exposure:
+        include: health

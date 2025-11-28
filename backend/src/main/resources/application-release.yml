@@ -1,0 +1,27 @@
+server:
+  shutdown: graceful
+
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 30s # default
+
+  datasource:
+    url: jdbc:mysql://${DB_URL}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}  # 여기에 실제 MySQL 비밀번호 입력
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  config:
+    import: "optional:file:../.env[.properties]"
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+    open-in-view: false
+
+  docker:
+    compose:
+      enabled: false

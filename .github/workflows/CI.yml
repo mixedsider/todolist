@@ -14,7 +14,6 @@ jobs:
   # JOB 1: Backend (Spring Boot) 테스트
   # -----------------------------------------------------------------
   backend-test:
-    # ... (생략: uses: actions/checkout@v4, setup-java, chmod +x gradlew) ...
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,33 +26,32 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
 
-      - name: Code Style Apply
-        run: ./gradlew spotlessApply
+      - name: Gradlew chmod +x
+        run: chmod +x ./gradlew
 
-      - name: Run Backend Tests and Generate Jacoco Report
-        # gradlew test를 실행하면 build.gradle 설정에 따라 jacocoTestReport도 실행됨
-        run: ./gradlew clean test jacocoTestReport
+      - name: Run Backend Tests
+        # 테스트를 실행하여 JUnit XML 리포트 생성 (Jacoco는 커버리지이므로 제외하고 JUnit 리포트만 사용)
+        run: ./gradlew clean test
 
-      - name: Upload Jacoco Report
-        if: always()
-        uses: actions/upload-artifact@v4
+      # 🚨 보고서 생성 1: Backend JUnit Report (직접 게시)
+      - name: Publish Backend Unit Test Results
+        uses: dorny/test-reporter@v1
+        if: always() # 테스트가 실패해도 리포트(주석)를 남기기 위해
         with:
-          name: backend-jacoco-report
-          path: backend/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          name: Backend Unit Tests
+          # Gradle은 build/test-results/test/ 폴더에 XML 파일을 생성합니다.
+          path: backend/build/test-results/test/*.xml
+          reporter: java-junit # 표준 Gradle JUnit XML 파서 사용
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Spring Boot JAR (For Deployment)
-        run: ./gradlew bootJar # 이미 빌드된 JAR 파일을 다시 빌드
-        working-directory: ./backend
-
-      - name: Upload Backend Deployment Artifact
-        uses: actions/upload-artifact@v4
+      - name: Publish Backend Coverage Comment (Jacoco)
+        uses: madrapps/jacoco-report@v1.6.1
         with:
-          name: deploy-backend-jar
-          path: backend/build/libs/*.jar
-          retention-days: 7 # 배포를 위해 일주일간 보관
+          paths: ./report_data/backend-jacoco-report/**/*.xml
+          title: 'Backend Code Coverage'
+          min-coverage-overall: '40'
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # -----------------------------------------------------------------
   # JOB 2: Frontend (React) 테스트
@@ -66,7 +64,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -76,65 +73,15 @@ jobs:
         run: npm ci
 
       - name: Run Frontend Tests
-        # Vitest 결과를 JUnit XML 포맷으로 출력 (--reporter=junit --outputFile=...)
+        # 테스트 실행 및 JUnit XML 출력
         run: npm test -- --reporter=junit --outputFile=./test-results.xml
 
-      - name: Upload Frontend Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-test-results
-          path: frontend/test-results.xml
-
-      - name: Build Frontend (For Deployment)
-        run: npm run build
-        working-directory: ./frontend
-
-      - name: Upload Frontend Deployment Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-frontend-dist
-          path: frontend/dist/
-          retention-days: 7
-
-  # -----------------------------------------------------------------
-  # JOB 3: 결과 분석 및 PR 댓글 작성
-  # -----------------------------------------------------------------
-  report:
-    needs: [ backend-test, frontend-test ]
-    runs-on: ubuntu-latest
-    if: always()
-
-    steps:
-      - name: Download Backend Jacoco Report
-        uses: actions/download-artifact@v4
-        with:
-          name: backend-jacoco-report
-          path: ./report_data/backend
-
-      - name: Download Frontend JUnit Report
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-test-results
-          path: ./report_data/frontend
-
-      # ✨ [NEW] Action 1: Jacoco 리포트 분석 및 PR에 게시
-      - name: Publish Backend Coverage Report (Jacoco)
-        uses: madrapps/jacoco-report@v1.6.1
-        with:
-          paths: ${{ steps.download-backend-report.outputs.download-path }}/jacocoTestReport.xml
-          # Jacoco Action이 PR에 코멘트를 달아줍니다.
-          title: 'Backend Code Coverage'
-          # 최소 커버리지 기준 설정 (옵션)
-          min-coverage-overall: '40'
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      # ✨ [NEW] Action 2: Frontend JUnit 리포트 분석 및 PR에 게시
-      - name: Publish Frontend Test Results (JUnit)
-        # 이 Action은 테스트 결과를 시각적으로 보여주고, 실패 시 주석을 달아줍니다.
+      # 🚨 보고서 생성 2: Frontend JUnit Report (직접 게시)
+      - name: Publish Frontend Unit Test Results
         uses: dorny/test-reporter@v1
+        if: always()
         with:
-          name: Frontend Test Results
-          path: 'report_data/frontend/test-results.xml'
-          reporter: junit
+          name: Frontend Unit Tests
+          path: frontend/test-results.xml # working-directory (./frontend) 기준
+          reporter: jest-junit
           token: ${{ secrets.GITHUB_TOKEN }}
