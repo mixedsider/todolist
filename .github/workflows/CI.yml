@@ -114,7 +114,7 @@ jobs:
       - name: Download Frontend JUnit Report
         uses: actions/download-artifact@v4
         with:
-          name: frontend-test-results
+          name: frontend-test-report
           path: ./report_data/frontend # 다운로드 위치 지정
 
       # 3. Publish Backend Coverage Report (Jacoco)
@@ -133,6 +133,6 @@ jobs:
         with:
           name: Frontend Test Results
           # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
-          path: './report_data/frontend/frontend-test-results/test-results.xml'
+          path: './report_data/frontend/**/test-results.xml'
           reporter: jest-junit
           token: ${{ secrets.GITHUB_TOKEN }}
