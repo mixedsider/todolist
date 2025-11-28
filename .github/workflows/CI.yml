@@ -17,33 +17,32 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./backend # 👈 Job의 시작점
+        working-directory: ./backend # 👈 run 명령어가 이 안에서 실행됨 (예: ./gradlew test)
 
     steps:
       - uses: actions/checkout@v4
+      # ... (Set up Java, Code Style, Run Tests) ...
 
-      - name: Gradlew chmod +x
-        run: chmod +x ./gradlew
+      # 테스트 실행 (이 단계에서 build/reports/jacoco/jacocoTestReport.xml 파일이 생성됨)
+      - name: Run Backend Tests and Generate Jacoco Report
+        run: ./gradlew clean test jacocoTestReport
 
-      - name: Build Spring Boot JAR (For Deployment)
-        run: ./gradlew bootJar
-        working-directory: ./backend # 👈 이 줄이 누락되었다면 추가해야 합니다!
-
+      # 🚨 수정 1: Jacoco Report 업로드 경로 (Artifacts는 루트 기준)
       - name: Upload Jacoco Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-jacoco-report
-          # 🚨 수정: artifacts 액션은 상대 경로가 아닌 실제 경로를 사용하거나,
-          #         Job의 working-directory를 기준으로 path를 지정해야 합니다.
-          #         여기서는 working-directory 안의 경로를 사용합니다.
-          path: build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml # 👈 './backend/' 제거
+          # Workspace Root (CI 루트)에서부터 backend 폴더를 명시
+          path: backend/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
 
+      # 🚨 수정 2: Deployment JAR 업로드 경로
       - name: Upload Backend Deployment Artifact
         uses: actions/upload-artifact@v4
         with:
           name: deploy-backend-jar
-          path: build/libs/*.jar # 👈 './backend/' 제거
+          # Workspace Root (CI 루트)에서부터 backend 폴더를 명시
+          path: backend/build/libs/*.jar
           retention-days: 7
 
   # -----------------------------------------------------------------
