@@ -1,20 +1,20 @@
 name: CD - Deploy to Remote Server (Dependent on CI)
 
 on:
-  workflow_run:
-    # 1. CI 워크플로우의 이름으로 설정 (ci.yml 파일의 name 필드와 일치해야 함)
-    workflows: ["CI - Test & Report"]
-    # 2. CI 워크플로우가 완료(completed)되었을 때만 트리거
-    types: [completed]
-    # 3. main 브랜치에 대해서만 배포
-    branches: [main]
+#  workflow_run:
+#    # 1. CI 워크플로우의 이름으로 설정 (ci.yml 파일의 name 필드와 일치해야 함)
+#    workflows: ["CI - Test & Report"]
+#    # 2. CI 워크플로우가 완료(completed)되었을 때만 트리거
+#    types: [completed]
+#    # 3. main 브랜치에 대해서만 배포
+#    branches: [main]
   workflow_dispatch:
 
 jobs:
   # CD Job은 CI Job의 성공 여부에 따라 조건부 실행됩니다.
   deploy:
     # CI 워크플로우의 결론(conclusion)이 'success'일 때만 실행
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    #if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
 
     steps:
