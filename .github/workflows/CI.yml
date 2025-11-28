@@ -114,7 +114,7 @@ jobs:
       - name: Download Frontend JUnit Report
         uses: actions/download-artifact@v4
         with:
-          name: frontend-test-report
+          name: frontend-test-results
           path: ./report_data/frontend # 다운로드 위치 지정
 
       # 3. Publish Backend Coverage Report (Jacoco)
