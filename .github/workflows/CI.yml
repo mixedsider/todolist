@@ -42,7 +42,7 @@ jobs:
           name: Backend Unit Tests
           # Gradle은 build/test-results/test/ 폴더에 XML 파일을 생성합니다.
           path: build/test-results/test/*.xml
-          reporter: junit # 표준 Gradle JUnit XML 파서 사용
+          reporter: java-junit # 표준 Gradle JUnit XML 파서 사용
           token: ${{ secrets.GITHUB_TOKEN }}
 
   # -----------------------------------------------------------------
