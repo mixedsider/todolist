@@ -43,7 +43,7 @@ jobs:
 
       - name: Rename built JAR with sha
         run: |
-          SRC_JAR=$(ls backend/build/libs/*.jar | head -n 1)
+          SRC_JAR=$(ls -t backend/build/libs/*.jar | head -n 1)
           cp "$SRC_JAR" "backend/build/libs/backend-${{ github.sha }}.jar"
           rm -r "$SRC_JAR"
 
