@@ -122,7 +122,7 @@ jobs:
         uses: madrapps/jacoco-report@v1.6.1
         with:
           # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
-          paths: './report_data/backend/backend-jacoco-report/jacocoTestReport.xml'
+          paths: './report_data/backend/backend-jacoco-report/*.xml'
           title: 'Backend Code Coverage'
           min-coverage-overall: '40'
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -136,6 +136,7 @@ jobs:
           path: './report_data/frontend/**/test-results.xml'
           reporter: jest-junit
           token: ${{ secrets.GITHUB_TOKEN }}
+
       # 4. Frontend JUnit Report 파일 읽기 및 댓글 추가
       - name: Generate Frontend Summary
         uses: actions/github-script@v7
@@ -145,7 +146,7 @@ jobs:
             const fs = require('fs');
             const path = require('path');
             
-            const resultsPath = './report_data/frontend/frontend-test-results/test-results.xml';
+            const resultsPath = './report_data/frontend/**/test-results.xml';
             let summary = '### ❌ Frontend Test Report - Error';
             
             if (fs.existsSync(resultsPath)) {
