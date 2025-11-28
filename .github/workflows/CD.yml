@@ -42,18 +42,24 @@ jobs:
         run: ./gradlew bootJar
 
       - name: Rename built JAR with sha
-        id: rename_jar # <-- id 추가
+        id: rename_jar
         working-directory: ./backend
         run: |
+          echo "PWD in rename_jar: $(pwd)"
+          ls -R
+
           SRC_JAR=$(ls -t build/libs/*.jar | head -n 1)
           echo "Found JAR: $SRC_JAR"
-          
+
           NEW_JAR_NAME="backend-${{ github.sha }}.jar"
           NEW_JAR_PATH="build/libs/$NEW_JAR_NAME"
-          
+
           cp "$SRC_JAR" "$NEW_JAR_PATH"
           rm -r "$SRC_JAR"
-          
+
+          echo "After rename:"
+          ls -R build/libs
+
           echo "NEW_JAR_PATH=$NEW_JAR_PATH" >> $GITHUB_OUTPUT
           echo "NEW_JAR_NAME=$NEW_JAR_NAME" >> $GITHUB_OUTPUT
 
@@ -95,6 +101,13 @@ jobs:
           source: "frontend/dist/"
           target: "~/frontend"   # ← 디렉터리만 허용
 
+      - name: Debug backend jar before scp
+        run: |
+          echo "Workspace: $PWD"
+          ls -R
+          ls -R backend/build/libs || true
+
+
       # 4-2. Backend JAR 전송 (proxy 사용)
       - name: Transfer Backend JAR to Target Server (via Bastion)
         uses: appleboy/scp-action@v0.1.7
@@ -104,15 +117,17 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
 
-          # 여기서는 리포지토리 루트 기준 경로만 그대로 사용
-          source: "${{ steps.rename_jar.outputs.NEW_JAR_PATH }}"
+          # 리포지토리 루트 기준: backend/build/libs/backend-<sha>.jar
+          source: "backend/build/libs/backend-${{ github.sha }}.jar"
+          # 또는: source: "backend/${{ steps.rename_jar.outputs.NEW_JAR_PATH }}"
+
           target: "~/backend"
-          strip_components: 2  # build/libs 를 벗겨내고 파일만 떨어뜨림
 
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ${{ secrets.BASTION_USER }}
           proxy_port: ${{ secrets.BASTION_HOST_PORT }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
 
           # ----------------------------------------------------------
       # 4-3. Target Server에서 서비스 재시작
