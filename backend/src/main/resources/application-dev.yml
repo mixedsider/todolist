@@ -7,12 +7,21 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: create-drop
+      ddl-auto: create
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
+        show_sql: true
+        use_sql_comments: true
+    open-in-view: false
 
   docker:
     compose:
       enabled: false
+
+logging:
+  level:
+    root: info
+    org.springframework.jdbc.core.JdbcTemplate: debug
+    org.springframework.jdbc.core.StatementCreatorUtils: trace
