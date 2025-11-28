@@ -29,10 +29,10 @@ jobs:
             ${{ runner.os }}-gradle-
 
       # Java 17 설정 (버전 확인 필요)
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       # 권한 설정 (backend 디렉토리 내의 gradlew 실행 권한 부여)
@@ -83,6 +83,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
           # 🚨 전체 경로 지정: todolist/backend/build/libs/*.jar
           source: "backend/build/libs/*.jar"
           target: "~/backend"
@@ -96,6 +97,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
           # 🚨 전체 경로 지정: todolist/frontend/dist/*
           source: "frontend/dist/*"
           target: "~/frontend"
@@ -109,6 +111,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
 
           # 기존 스크립트 그대로 사용
           script: |
