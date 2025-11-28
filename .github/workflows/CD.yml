@@ -132,7 +132,16 @@ jobs:
             NEW_JAR_PATH="${DEPLOY_PATH}/${NEW_JAR_NAME}"
             FINAL_JAR_PATH="${DEPLOY_PATH}/${JAR_NAME}"
 
-            # 2. 기존 프로세스 종료 (유지)
+            # --- 추가된 로직 ---
+            # 💡 backend.jar와 backend.jar.new를 제외한 모든 .jar 파일을 삭제하여 정리합니다.
+            find ${DEPLOY_PATH} -maxdepth 1 -name "*.jar" \
+              | grep -v "${JAR_NAME}" \
+              | grep -v "${NEW_JAR_NAME}" \
+              | xargs rm -f
+            echo "💡 이전 버전 JAR 파일 정리 완료."
+            # --------------------
+
+            # 2. 기존 프로세스 종료
             CURRENT_PID=$(ps -ef | grep java | grep "${JAR_NAME}" | awk '{print $2}')
             if [ -n "$CURRENT_PID" ]; then
               echo "Stopping process with PID: $CURRENT_PID"; kill -9 $CURRENT_PID; sleep 5;
