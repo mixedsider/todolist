@@ -6,7 +6,7 @@ spring:
     timeout-per-shutdown-phase: 30s # default
 
   datasource:
-    url: jdbc:mysql://${DB_URL}:${DB_PORT}/${DATABASE}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    url: jdbc:mysql://${DB_URL}?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}  # 여기에 실제 MySQL 비밀번호 입력
     driver-class-name: com.mysql.cj.jdbc.Driver
