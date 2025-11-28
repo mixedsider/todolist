@@ -152,11 +152,6 @@ jobs:
               echo "No active Java process found."
             fi
 
-            if [ ! -f "$FINAL_JAR_PATH" ]; then
-              echo "❌ Error: Target JAR file ($FINAL_JAR_PATH) not found!"
-              exit 1
-            fi
-
             chmod 744 "$FINAL_JAR_PATH"
 
             nohup java \
