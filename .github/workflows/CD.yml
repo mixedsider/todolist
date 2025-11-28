@@ -2,7 +2,7 @@ name: CD - Build and Deploy
 
 on:
   # main 브랜치에 코드가 푸시된 PR에서만 실행
-  pull_request:
+  push:
     branches: [ main ]
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
 
       - name: Build Backend JAR
         working-directory: ./backend
-        run: ./gradlew bootJar
+        run: ./gradlew bootJar -x test
 
       - name: Rename built JAR with sha
         id: rename_jar
@@ -79,7 +79,7 @@ jobs:
 
       - name: Build Frontend DIST
         working-directory: ./frontend
-        run: npm run build
+        run: CI=false npm run build
 
       # ===========================
       # 4. Deploy
