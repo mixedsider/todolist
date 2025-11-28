@@ -1,149 +1,101 @@
-name: CI - Test & Report
+name: CI Pipeline
 
 on:
+  push:
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
-
-permissions:
-  contents: read
-  pull-requests: write
-  checks: write
+    branches: ["main"]
 
 jobs:
-  # ----------------------------------------------------------
-  # JOB 1: Backend (Spring Boot)
-  # ----------------------------------------------------------
-  backend-test:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Gradlew chmod +x
-        run: chmod +x ./gradlew
-
-      - name: Code Style Apply
-        run: ./gradlew spotlessApply
-
-      - name: Run Backend Tests and Generate Jacoco Report
-        run: ./gradlew clean test jacocoTestReport
-
-      - name: Build JAR (Deployment)
-        run: ./gradlew bootJar
-
-      # ⭐ Jacoco Report Upload (정확한 경로)
-      - name: Upload Jacoco Report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-jacoco-report
-          path: build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
-
-      # ⭐ Backend JAR Upload (정확한 경로)
-      - name: Upload Backend Deployment Artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-backend-jar
-          path: build/libs/*.jar
-          retention-days: 7
-
-  # ----------------------------------------------------------
-  # JOB 2: Frontend (React / Vite)
-  # ----------------------------------------------------------
   frontend-test:
+    name: Frontend Test & Build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 18
 
-      - name: Install Dependencies
-        run: npm ci
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm install
 
       - name: Run Frontend Tests
-        run: npm test -- --reporter=junit --outputFile=test-results.xml
+        run: |
+          cd frontend
+          npm test -- --watch=false --reporters=junit --reporter-options "outputFile=./test-results.xml"
 
-      # ⭐ Frontend Test Result Upload
-      - name: Upload Frontend Test Results
-        if: always()
+      - name: Build Frontend
+        run: |
+          cd frontend
+          npm run build
+
+      # -----------------------
+      # 📌 Frontend Artifacts 업로드
+      # -----------------------
+
+      - name: Upload Frontend Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-test-results
-          path: test-results.xml
+          name: frontend-dist
+          path: frontend/dist/**
+          if-no-files-found: error
 
-      - name: Build Frontend (Deployment)
-        run: npm run build
-
-      # ⭐ Frontend DIST Upload
-      - name: Upload Frontend Deployment Artifact
-        if: always()
+      - name: Upload Frontend Test Result
         uses: actions/upload-artifact@v4
         with:
-          name: deploy-frontend-dist
-          path: dist/**
-          retention-days: 7
+          name: frontend-test-report
+          path: frontend/test-results.xml
+          if-no-files-found: error
 
-  # ----------------------------------------------------------
-  # JOB 3: Report (Jacoco + JUnit + PR Comment)
-  # ----------------------------------------------------------
-  report:
-    needs: [ backend-test, frontend-test ]
+
+  backend-test:
+    name: Backend Test & Build
     runs-on: ubuntu-latest
-    if: always()
+    needs: frontend-test
 
     steps:
-      - name: Download Backend Jacoco Report
-        uses: actions/download-artifact@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x backend/gradlew
+
+      - name: Run Backend Tests
+        run: |
+          cd backend
+          ./gradlew test jacocoTestReport
+
+      - name: Build Backend JAR
+        run: |
+          cd backend
+          ./gradlew bootJar
+
+      # -----------------------
+      # 📌 Backend Artifacts 업로드
+      # -----------------------
+
+      - name: Upload Backend JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: backend/build/libs/*.jar
+          if-no-files-found: error
+
+      - name: Upload Jacoco Test Report
+        uses: actions/upload-artifact@v4
         with:
           name: backend-jacoco-report
-          path: ./report_data/backend
-
-      - name: Download Frontend JUnit Report
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-test-results
-          path: ./report_data/frontend
-
-      # ⭐ Jacoco 리포트 게시 (정확한 경로)
-      - name: Publish Backend Coverage Report (Jacoco)
-        uses: madrapps/jacoco-report@v1.6.1
-        with:
-          paths: report_data/backend/jacocoTestReport.xml
-          title: 'Backend Code Coverage'
-          min-coverage-overall: '40'
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      # ⭐ Frontend Test Report 게시 (JUnit)
-      - name: Publish Frontend Test Results (JUnit)
-        uses: dorny/test-reporter@v1
-        with:
-          name: Frontend Test Results
-          path: report_data/frontend/test-results.xml
-          reporter: junit
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      # 디버깅용
-      - name: Debug - List Downloaded Files
-        if: always()
-        run: |
-          echo "=== Backend Jacoco Files ==="
-          find report_data/backend -type f
-          echo "=== Frontend JUnit Files ==="
-          find report_data/frontend -type f
+          path: backend/build/reports/jacoco/test/jacocoTestReport.xml
+          if-no-files-found: error
