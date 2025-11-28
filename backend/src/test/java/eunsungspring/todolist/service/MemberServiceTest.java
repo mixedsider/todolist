@@ -1,19 +1,5 @@
 package eunsungspring.todolist.service;
 
-import eunsungspring.todolist.dto.request.MemberRequest;
-import eunsungspring.todolist.dto.response.MemberResponse;
-import eunsungspring.todolist.entity.Member;
-import eunsungspring.todolist.repository.MemberRepository;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
-
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -22,14 +8,25 @@ import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import eunsungspring.todolist.dto.request.MemberRequest;
+import eunsungspring.todolist.dto.response.MemberResponse;
+import eunsungspring.todolist.entity.Member;
+import eunsungspring.todolist.repository.MemberRepository;
+import java.util.Optional;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
 @ExtendWith(MockitoExtension.class)
 class MemberServiceTest {
 
-  @Mock
-  MemberRepository memberRepository;
+  @Mock MemberRepository memberRepository;
 
-  @InjectMocks
-  MemberService memberService;
+  @InjectMocks MemberService memberService;
 
   @Test
   @DisplayName("회원가입 성공: 중복되지 않은 이메일")
@@ -58,9 +55,12 @@ class MemberServiceTest {
     given(memberRepository.existsByEmail(request.email())).willReturn(true);
 
     // when & then
-    IllegalStateException e = assertThrows(IllegalStateException.class, () -> {
-      memberService.signup(request);
-    });
+    IllegalStateException e =
+        assertThrows(
+            IllegalStateException.class,
+            () -> {
+              memberService.signup(request);
+            });
 
     assertThat(e.getMessage()).isEqualTo("이미 존재하는 회원입니다.");
   }
@@ -90,10 +90,7 @@ class MemberServiceTest {
     // given
     MemberRequest request = new MemberRequest("user@example.com", "password@123");
 
-    Member member = Member.builder()
-        .email("user@example.com")
-        .password("password@123")
-        .build();
+    Member member = Member.builder().email("user@example.com").password("password@123").build();
 
     ReflectionTestUtils.setField(member, "id", 1L);
 
@@ -121,9 +118,12 @@ class MemberServiceTest {
         .willReturn(Optional.empty());
 
     // when & then
-    IllegalStateException e = assertThrows(IllegalStateException.class, () -> {
-      memberService.login(request);
-    });
+    IllegalStateException e =
+        assertThrows(
+            IllegalStateException.class,
+            () -> {
+              memberService.login(request);
+            });
 
     assertThat(e.getMessage()).isEqualTo("이메일 혹은 비밀번호를 확인해주세요");
   }

@@ -37,8 +37,9 @@ public class Member {
   }
 
   private void setEmail(String email) {
-    String emailRegex = "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
-    if(!Pattern.matches(emailRegex, email)) {
+    String emailRegex =
+        "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$";
+    if (!Pattern.matches(emailRegex, email)) {
       throw new IllegalStateException("Invalid email format");
     }
     this.email = email;
@@ -47,7 +48,7 @@ public class Member {
   private void setPassword(String password) {
     // 비밀번호는 최소 8글자에 특수 문자 한글자를 포함해야된다.
     String passwordRegex = "^(?=.*[\\W_]).{8,}$";
-    if(!Pattern.matches(passwordRegex, password)) {
+    if (!Pattern.matches(passwordRegex, password)) {
       throw new IllegalStateException("Invalid password format");
     }
     this.password = password;

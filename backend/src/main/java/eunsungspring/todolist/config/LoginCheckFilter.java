@@ -5,20 +5,21 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import java.io.IOException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.PatternMatchUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
-
-import java.io.IOException;
 
 @Slf4j
 public class LoginCheckFilter extends OncePerRequestFilter {
 
   private static final String[] whiteList = {
-      "/api/v1/members/signup",
-      "/api/v1/members/login",
-      "/css/*", "/js/*", "/favicon.ico",
-      "/error" // 스프링 부트 기본 에러 페이지 처리
+    "/api/v1/members/signup",
+    "/api/v1/members/login",
+    "/css/*",
+    "/js/*",
+    "/favicon.ico",
+    "/error" // 스프링 부트 기본 에러 페이지 처리
   };
 
   @Override
@@ -32,7 +33,9 @@ public class LoginCheckFilter extends OncePerRequestFilter {
   }
 
   @Override
-  protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
+  protected void doFilterInternal(
+      HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+      throws ServletException, IOException {
 
     String requestURI = request.getRequestURI();
 

@@ -30,7 +30,8 @@ public class MemberController {
 
   // 로그인
   @PostMapping("/v1/members/login")
-  public ResponseEntity<String> login(@Valid @RequestBody MemberRequest request, HttpServletRequest httpRequest) {
+  public ResponseEntity<String> login(
+      @Valid @RequestBody MemberRequest request, HttpServletRequest httpRequest) {
     MemberResponse loginMember = memberService.login(request);
 
     HttpSession session = httpRequest.getSession(true);

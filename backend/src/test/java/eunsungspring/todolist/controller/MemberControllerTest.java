@@ -1,6 +1,5 @@
 package eunsungspring.todolist.controller;
 
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
@@ -22,20 +21,16 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
 import tools.jackson.databind.ObjectMapper;
 
 @WebMvcTest(MemberController.class) // Controller만 로드하여 테스트
 class MemberControllerTest {
 
-  @Autowired
-  MockMvc mockMvc; // 가짜 HTTP 요청을 보내는 객체
+  @Autowired MockMvc mockMvc; // 가짜 HTTP 요청을 보내는 객체
 
-  @Autowired
-  ObjectMapper objectMapper; // 객체 -> JSON 변환기
+  @Autowired ObjectMapper objectMapper; // 객체 -> JSON 변환기
 
-  @MockitoBean
-  MemberService memberService; // 가짜 서비스 (로직은 서비스 테스트에서 검증했으므로 여기선 Mock 처리)
+  @MockitoBean MemberService memberService; // 가짜 서비스 (로직은 서비스 테스트에서 검증했으므로 여기선 Mock 처리)
 
   @Test
   @DisplayName("회원가입 요청 성공")
@@ -47,9 +42,11 @@ class MemberControllerTest {
     String jsonContent = objectMapper.writeValueAsString(request);
 
     // when & then
-    mockMvc.perform(post("/api/v1/members/signup")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(jsonContent))
+    mockMvc
+        .perform(
+            post("/api/v1/members/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonContent))
         .andExpect(status().isOk()) // 200 OK 확인
         .andExpect(content().string("회원가입 성공")); // 반환 메시지 확인
 
@@ -72,9 +69,11 @@ class MemberControllerTest {
     String jsonContent = objectMapper.writeValueAsString(request);
 
     // when & then
-    mockMvc.perform(post("/api/v1/members/login")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(jsonContent))
+    mockMvc
+        .perform(
+            post("/api/v1/members/login")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonContent))
         .andExpect(status().isOk())
         .andExpect(content().string("로그인 성공"))
         // ★ 중요: 세션에 값이 제대로 들어갔는지 검증
@@ -90,8 +89,8 @@ class MemberControllerTest {
     session.setAttribute(SessionConst.LOGIN_MEMBER_ID, 1L);
 
     // when
-    mockMvc.perform(post("/api/v1/members/logout")
-            .session(session)) // 세션을 담아서 요청
+    mockMvc
+        .perform(post("/api/v1/members/logout").session(session)) // 세션을 담아서 요청
         .andExpect(status().isOk())
         .andExpect(content().string("로그아웃 성공"));
 
@@ -111,8 +110,8 @@ class MemberControllerTest {
     session.setAttribute(SessionConst.LOGIN_MEMBER_ID, 1L);
 
     // when
-    mockMvc.perform(post("/api/v1/members/logout")
-            .session(session)) // 3. 요청에 세션을 담아서 보냅니다.
+    mockMvc
+        .perform(post("/api/v1/members/logout").session(session)) // 3. 요청에 세션을 담아서 보냅니다.
         .andExpect(status().isOk())
         .andExpect(content().string("로그아웃 성공"));
 

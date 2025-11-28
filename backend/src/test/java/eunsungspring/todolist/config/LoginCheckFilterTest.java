@@ -1,7 +1,10 @@
 package eunsungspring.todolist.config;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,10 +12,6 @@ import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockHttpSession;
-
-import java.io.IOException;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class LoginCheckFilterTest {
 
@@ -66,7 +65,7 @@ class LoginCheckFilterTest {
     // given
     MockHttpServletRequest request = new MockHttpServletRequest();
     request.setRequestURI("/api/v1/todos"); // 인증이 필요한 URL이지만
-    request.setMethod("OPTIONS");          // 메서드가 OPTIONS임
+    request.setMethod("OPTIONS"); // 메서드가 OPTIONS임
     MockHttpServletResponse response = new MockHttpServletResponse();
     MockFilterChain chain = new MockFilterChain();
 

@@ -1,8 +1,8 @@
 package eunsungspring.todolist.config;
 
+import jakarta.servlet.Filter;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
-import jakarta.servlet.Filter;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -12,7 +12,8 @@ public class WebConfig implements WebMvcConfigurer {
 
   @Override
   public void addCorsMappings(CorsRegistry registry) {
-    registry.addMapping("/**")
+    registry
+        .addMapping("/**")
         .allowedOrigins("http://localhost:5173") // React 앱 주소
         .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH")
         .allowCredentials(true); // 쿠키(세션) 인증 요청 허용

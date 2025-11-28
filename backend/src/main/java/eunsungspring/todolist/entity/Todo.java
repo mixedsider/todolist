@@ -35,8 +35,7 @@ public class Todo {
   @Column(updatable = false)
   private LocalDateTime createdAt; // 생성 시간
 
-  @Column
-  private LocalDateTime completedAt;
+  @Column private LocalDateTime completedAt;
 
   // 연관관계 매핑 (다대일: 여러 Todo는 하나의 Member에 속함)
   @ManyToOne(fetch = FetchType.LAZY) // 지연 로딩 권장
@@ -52,7 +51,7 @@ public class Todo {
   }
 
   public void toggleStatus() {
-    if( !isCompleted ) { // 안함 -> 완료
+    if (!isCompleted) { // 안함 -> 완료
       completedAt = LocalDateTime.now();
       this.isCompleted = !this.isCompleted;
     } else { // 완료 -> 안함
@@ -66,7 +65,7 @@ public class Todo {
   }
 
   private void setContent(String content) {
-    if( content.length() < 2) {
+    if (content.length() < 2) {
       throw new IllegalArgumentException("Content must be at least 2 characters");
     }
     this.content = content;

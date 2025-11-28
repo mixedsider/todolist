@@ -1,9 +1,18 @@
 package eunsungspring.todolist.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
 import eunsungspring.todolist.config.SessionConst;
 import eunsungspring.todolist.dto.request.TodoRequest;
 import eunsungspring.todolist.dto.response.TodoResponse;
 import eunsungspring.todolist.service.TodoService;
+import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,29 +21,16 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.time.LocalDateTime;
-import java.util.List;
 import tools.jackson.databind.ObjectMapper;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.verify;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TodoController.class)
 class TodoControllerTest {
 
-  @Autowired
-  MockMvc mockMvc;
+  @Autowired MockMvc mockMvc;
 
-  @Autowired
-  ObjectMapper objectMapper;
+  @Autowired ObjectMapper objectMapper;
 
-  @MockitoBean
-  TodoService todoService;
+  @MockitoBean TodoService todoService;
 
   @Test
   @DisplayName("내 Todo 목록 조회 성공 (로그인 상태)")
@@ -47,15 +43,15 @@ class TodoControllerTest {
     session.setAttribute(SessionConst.LOGIN_MEMBER_ID, memberId);
 
     // 서비스가 반환할 데이터 준비
-    List<TodoResponse> mockTodos = List.of(
-        new TodoResponse(10L, "스프링 공부", false, LocalDateTime.now(), null),
-        new TodoResponse(11L, "운동하기", true, LocalDateTime.now(), null)
-    );
+    List<TodoResponse> mockTodos =
+        List.of(
+            new TodoResponse(10L, "스프링 공부", false, LocalDateTime.now(), null),
+            new TodoResponse(11L, "운동하기", true, LocalDateTime.now(), null));
     given(todoService.getMyTodos(memberId)).willReturn(mockTodos);
 
     // when & then
-    mockMvc.perform(get("/api/v1/todos")
-            .session(session)) // 세션 포함 요청
+    mockMvc
+        .perform(get("/api/v1/todos").session(session)) // 세션 포함 요청
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.size()").value(2)) // 리스트 크기 확인
         .andExpect(jsonPath("$[0].content").value("스프링 공부"))
@@ -69,8 +65,7 @@ class TodoControllerTest {
     // 세션 없이 요청
 
     // when & then
-    mockMvc.perform(get("/api/v1/todos"))
-        .andExpect(status().isUnauthorized()); // 401 확인
+    mockMvc.perform(get("/api/v1/todos")).andExpect(status().isUnauthorized()); // 401 확인
   }
 
   @Test
@@ -89,10 +84,12 @@ class TodoControllerTest {
     given(todoService.createTodo(eq(memberId), any())).willReturn(100L);
 
     // when & then
-    mockMvc.perform(post("/api/v1/todos")
-            .session(session)
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(jsonContent))
+    mockMvc
+        .perform(
+            post("/api/v1/todos")
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonContent))
         .andExpect(status().isOk())
         .andExpect(content().string("100")); // 반환된 ID 확인
 
@@ -112,8 +109,8 @@ class TodoControllerTest {
     given(todoService.toggleTodoStatus(todoId, memberId)).willReturn(true);
 
     // when & then
-    mockMvc.perform(patch("/api/v1/todos/{todoId}", todoId)
-            .session(session))
+    mockMvc
+        .perform(patch("/api/v1/todos/{todoId}", todoId).session(session))
         .andExpect(status().isOk())
         .andExpect(content().string("true"));
   }
@@ -126,7 +123,6 @@ class TodoControllerTest {
     // 세션 없음
 
     // when & then
-    mockMvc.perform(patch("/api/v1/todos/{todoId}", todoId))
-        .andExpect(status().isUnauthorized());
+    mockMvc.perform(patch("/api/v1/todos/{todoId}", todoId)).andExpect(status().isUnauthorized());
   }
 }

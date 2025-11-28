@@ -1,16 +1,15 @@
 package eunsungspring.todolist.dto.request;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 class MemberRequestTest {
 
@@ -47,9 +46,7 @@ class MemberRequestTest {
 
     // then
     assertThat(violations).isNotEmpty(); // 에러가 있어야 함
-    assertThat(violations)
-        .extracting("message")
-        .contains("Invalid email format");
+    assertThat(violations).extracting("message").contains("Invalid email format");
   }
 
   @Test
@@ -63,9 +60,7 @@ class MemberRequestTest {
 
     // then
     assertThat(violations).isNotEmpty();
-    assertThat(violations)
-        .extracting("message")
-        .contains("Invalid password format");
+    assertThat(violations).extracting("message").contains("Invalid password format");
   }
 
   @Test

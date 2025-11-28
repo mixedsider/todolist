@@ -1,10 +1,19 @@
 package eunsungspring.todolist.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+
 import eunsungspring.todolist.dto.response.TodoResponse;
 import eunsungspring.todolist.entity.Member;
 import eunsungspring.todolist.entity.Todo;
 import eunsungspring.todolist.repository.MemberRepository;
 import eunsungspring.todolist.repository.TodoRepository;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,34 +22,19 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
 @ExtendWith(MockitoExtension.class)
 class TodoServiceTest {
 
-  @Mock
-  TodoRepository todoRepository;
+  @Mock TodoRepository todoRepository;
 
-  @Mock
-  MemberRepository memberRepository;
+  @Mock MemberRepository memberRepository;
 
-  @InjectMocks
-  TodoService todoService;
+  @InjectMocks TodoService todoService;
 
   // 테스트용 멤버 생성 도우미 메서드
   private Member createMember(Long id) {
-    Member member = Member.builder()
-        .email("test" + id + "@example.com")
-        .password("password@123")
-        .build();
+    Member member =
+        Member.builder().email("test" + id + "@example.com").password("password@123").build();
     // ID는 DB에서 부여하지만, 테스트에선 직접 주입
     ReflectionTestUtils.setField(member, "id", id);
     return member;
@@ -70,9 +64,12 @@ class TodoServiceTest {
     given(memberRepository.findById(memberId)).willReturn(Optional.empty());
 
     // when & then
-    IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> {
-      todoService.createTodo(memberId, "할 일 내용");
-    });
+    IllegalArgumentException e =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> {
+              todoService.createTodo(memberId, "할 일 내용");
+            });
 
     assertThat(e.getMessage()).isEqualTo("존재하지 않는 회원입니다.");
   }
@@ -137,10 +134,13 @@ class TodoServiceTest {
     given(todoRepository.findById(todoId)).willReturn(Optional.of(todo));
 
     // when & then
-    IllegalStateException e = assertThrows(IllegalStateException.class, () -> {
-      // 2번 유저가 1번 유저의 글을 수정 시도
-      todoService.toggleTodoStatus(todoId, otherMemberId);
-    });
+    IllegalStateException e =
+        assertThrows(
+            IllegalStateException.class,
+            () -> {
+              // 2번 유저가 1번 유저의 글을 수정 시도
+              todoService.toggleTodoStatus(todoId, otherMemberId);
+            });
 
     assertThat(e.getMessage()).isEqualTo("해당 투두에 대한 권한이 없습니다.");
   }

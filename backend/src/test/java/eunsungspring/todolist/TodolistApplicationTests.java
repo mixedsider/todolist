@@ -10,8 +10,7 @@ import org.springframework.test.context.ActiveProfiles;
 class TodolistApplicationTests {
 
   @Test
-  void contextLoads() {
-  }
+  void contextLoads() {}
 
   @Test
   @DisplayName("Main 메서드 실행 테스트 (커버리지 100% 달성용)")

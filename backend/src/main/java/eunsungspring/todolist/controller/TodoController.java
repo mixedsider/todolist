@@ -60,9 +60,8 @@ public class TodoController {
   @DeleteMapping("/v1/todos/{todoId}")
   public ResponseEntity<Void> deleteTodo(
       @SessionAttribute(name = SessionConst.LOGIN_MEMBER_ID) Long memberId,
-      @Positive @PathVariable Long todoId ) {
+      @Positive @PathVariable Long todoId) {
     todoService.deleteTodo(todoId, memberId);
     return ResponseEntity.noContent().build();
   }
-
 }
