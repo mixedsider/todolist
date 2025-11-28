@@ -135,21 +135,14 @@ jobs:
 
             cd "$DEPLOY_PATH" || { echo "Deploy path not found"; exit 1; }
 
-            NEW_JAR=$(ls -t *.jar | head -n 1)
-
-            if [ -z "$NEW_JAR" ]; then
+            if [ -z "$TARGET_JAR_NAME" ]; then
               echo "❌ Error: No JAR file found in $DEPLOY_PATH"
               exit 1
             fi
 
-            echo "Found new JAR: $NEW_JAR"
+            echo "Found new JAR: $TARGET_JAR_NAME"
 
-            if [ "$NEW_JAR" != "$TARGET_JAR_NAME" ]; then
-              cp "$NEW_JAR" "$TARGET_JAR_NAME"
-              echo "Copied $NEW_JAR to $TARGET_JAR_NAME"
-            fi
-
-            CURRENT_PID=$(ps -ef | grep java | grep "$DEPLOY_PATH" | grep -v grep | awk '{print $2}')
+            CURRENT_PID=$(ps -ef | grep java | grep backend- | grep -v grep | awk '{print $2}')
 
             if [ -n "$CURRENT_PID" ]; then
               echo "Stopping old process with PID: $CURRENT_PID"
