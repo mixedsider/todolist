@@ -116,10 +116,10 @@ jobs:
             # 방법 1: -D 시스템 속성 전달 (DB_URL을 Spring이 바로 읽는다고 가정)
             echo "Starting application with properties..."
             nohup java -jar \
-              -DDB_URL=$DB_URL \
-              -DDB_USERNAME=$DB_USER \
-              -DDB_PASSWORD=$DB_PASS \
-              -DDB_PORT=$DB_PORT \
+              -DB_URL=$DB_URL \
+              -DB_USERNAME=$DB_USER \
+              -DB_PASSWORD=$DB_PASS \
+              -DB_PORT=$DB_PORT \
               ${DEPLOY_PATH}/${JAR_NAME} \
               > ${DEPLOY_PATH}/app.log 2>&1 &
             
