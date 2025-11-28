@@ -41,6 +41,12 @@ jobs:
         working-directory: ./backend
         run: ./gradlew bootJar
 
+      - name: Rename built JAR with sha
+        run: |
+          SRC_JAR=$(ls backend/build/libs/*.jar | head -n 1)
+          cp "$SRC_JAR" "backend/build/libs/backend-${{ github.sha }}.jar"
+          rm -r "$SRC_JAR"
+
       # ===========================
       # 3. Frontend (Node)
       # ===========================
@@ -92,7 +98,7 @@ jobs:
           source: "backend/build/libs/*.jar"
 
           # target은 디렉터리여야 하므로, 파일명까지 쓰지 말고 디렉터리만 지정
-          target: "~/backend/backend-${{ github.sha }}.jar"
+          target: "~/backend"
 
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ${{ secrets.BASTION_USER }}
