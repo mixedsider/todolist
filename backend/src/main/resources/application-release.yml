@@ -25,9 +25,3 @@ spring:
   docker:
     compose:
       enabled: false
-
-# (선택) 로깅 레벨 설정 - SQL 바인딩 파라미터 값 확인용
-logging:
-  level:
-    org.hibernate.SQL: debug
-    org.hibernate.type.descriptor.sql: trace
