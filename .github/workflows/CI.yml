@@ -91,35 +91,40 @@ jobs:
     if: always()
 
     steps:
+      # ... (Download Frontend JUnit Report) ...
+
+      # 1. Download Backend Jacoco Report (path: ./report_data/backend)
       - name: Download Backend Jacoco Report
         uses: actions/download-artifact@v4
+        id: download-backend-jacoco # ID를 부여하여 다음 단계에서 경로를 참조
         with:
           name: backend-jacoco-report
-          path: ./report_data/backend
+          path: ./report_data/backend # 👈 다운로드 위치
 
+      # 2. Publish Backend Coverage Report (Jacoco)
+      - name: Publish Backend Coverage Report (Jacoco)
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          # 🚨 수정: 다운로드 위치 아래에 파일이 있음 🚨
+          # 다운로드 경로 (./report_data/backend) + Artifact 이름 폴더 + 파일명
+          paths: ./report_data/backend/backend-jacoco-report/jacocoTestReport.xml
+          title: 'Backend Code Coverage'
+          min-coverage-overall: '40'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Download Frontend JUnit Report
       - name: Download Frontend JUnit Report
         uses: actions/download-artifact@v4
         with:
           name: frontend-test-results
-          path: ./report_data/frontend
+          path: ./report_data/frontend # 👈 다운로드 위치
 
-      # ✨ [NEW] Action 1: Jacoco 리포트 분석 및 PR에 게시
-      - name: Publish Backend Coverage Report (Jacoco)
-        uses: madrapps/jacoco-report@v1.6.1
-        with:
-          paths: ${{ steps.download-backend-report.outputs.download-path }}/jacocoTestReport.xml
-          # Jacoco Action이 PR에 코멘트를 달아줍니다.
-          title: 'Backend Code Coverage'
-          # 최소 커버리지 기준 설정 (옵션)
-          min-coverage-overall: '40'
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      # ✨ [NEW] Action 2: Frontend JUnit 리포트 분석 및 PR에 게시
+      # 4. Publish Frontend Test Results (JUnit)
       - name: Publish Frontend Test Results (JUnit)
-        # 이 Action은 테스트 결과를 시각적으로 보여주고, 실패 시 주석을 달아줍니다.
         uses: dorny/test-reporter@v1
         with:
-          name: Frontend Test Results
-          path: 'report_data/frontend/test-results.xml'
+          # 🚨 수정: 다운로드 위치 아래에 파일이 있음 🚨
+          path: 'report_data/frontend/frontend-test-results/test-results.xml'
           reporter: junit
           token: ${{ secrets.GITHUB_TOKEN }}
+          name: 'Frontend Code Coverage'
