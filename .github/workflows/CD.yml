@@ -1,14 +1,13 @@
 name: CD - Deploy to Remote Server (Dependent on CI)
 
 on:
-#  workflow_run:
-#    # 1. CI 워크플로우의 이름으로 설정 (ci.yml 파일의 name 필드와 일치해야 함)
-#    workflows: ["CI - Test & Report"]
-#    # 2. CI 워크플로우가 완료(completed)되었을 때만 트리거
-#    types: [completed]
-#    # 3. main 브랜치에 대해서만 배포
-#    branches: [main]
-  workflow_dispatch:
+  workflow_run:
+    # 1. CI 워크플로우의 이름으로 설정 (ci.yml 파일의 name 필드와 일치해야 함)
+    workflows: ["CI - Test & Report"]
+    # 2. CI 워크플로우가 완료(completed)되었을 때만 트리거
+    types: [completed]
+    # 3. main 브랜치에 대해서만 배포
+    branches: [main]
 
 jobs:
   # CD Job은 CI Job의 성공 여부에 따라 조건부 실행됩니다.
@@ -87,35 +86,47 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+          # 🚨 스크립트 수정 부분 🚨
           script: |
+            # 1. 환경 변수 정의
+            # ${{ secrets.SECRET_NAME }} 문법으로 GitHub Secrets 값을 읽어와 bash 변수로 선언합니다.
+            DB_URL="${{ vars.DB_URL }}"          # 일반 환경 변수 (vars.)
+            DB_USER="${{ secrets.DB_USERNAME }}" # 시크릿 변수 (secrets.)
+            DB_PASS="${{ secrets.DB_PASSWORD }}"
+            DB_PORT="${{ vars.DB_PORT }}"         # 일반 환경 변수 (vars.)
+            
+            # Spring Boot가 인식하는 환경 변수 이름으로 매핑 (선택사항, 하지만 권장)
+            # DB_URL, DB_USERNAME, DB_PASSWORD, DB_PORT 는 예시입니다.
+            # Spring Boot의 표준 환경 변수명(SPRING_DATASOURCE_URL 등)을 사용하는 것이 일반적입니다.
+            
             DEPLOY_PATH="/home/${{ secrets.DEPLOY_USER }}/backend"
-            FRONTEND_PATH="/home/${{ secrets.DEPLOY_USER }}/frontend"
             JAR_NAME="backend.jar"
             
-            mkdir -p ${DEPLOY_PATH}
-            mkdir -p ${FRONTEND_PATH}
-            
+            # (중략: 기존 프로세스 종료 및 파일 교체 로직)
             CURRENT_PID=$(ps -ef | grep java | grep "${JAR_NAME}" | awk '{print $2}')
-            
             if [ -n "$CURRENT_PID" ]; then
-              echo "Stopping process with PID: $CURRENT_PID"
-              kill -9 $CURRENT_PID
-              sleep 5
-            else
-              echo "No running process found for $JAR_NAME."
+              echo "Stopping process with PID: $CURRENT_PID"; kill -9 $CURRENT_PID; sleep 5;
             fi
             
-            NEW_JAR=$(find ${DEPLOY_PATH} -maxdepth 1 -name "*.jar" -print -quit)
+            # ----------------------------------------------------
+            # 2. 애플리케이션 재실행 시 환경 변수/시스템 속성 전달 (가장 중요한 부분)
+            # ----------------------------------------------------
             
-            if [ -f "$NEW_JAR" ]; then
-                mv $NEW_JAR ${DEPLOY_PATH}/${JAR_NAME}
-                echo "Renamed $NEW_JAR to $JAR_NAME"
-            else
-                echo "Error: New JAR file not found!"
-                exit 1
-            fi
+            # 방법 1: -D 시스템 속성 전달 (DB_URL을 Spring이 바로 읽는다고 가정)
+            echo "Starting application with properties..."
+            nohup java -jar \
+              -DDB_URL=$DB_URL \
+              -DDB_USERNAME=$DB_USER \
+              -DDB_PASSWORD=$DB_PASS \
+              -DDB_PORT=$DB_PORT \
+              ${DEPLOY_PATH}/${JAR_NAME} \
+              > ${DEPLOY_PATH}/app.log 2>&1 &
             
-            echo "Starting application: ${DEPLOY_PATH}/${JAR_NAME}"
-            nohup java -jar ${DEPLOY_PATH}/${JAR_NAME} > ${DEPLOY_PATH}/app.log 2>&1 &
+            # --- OR ---
+            
+            # 방법 2: Export 환경 변수 전달 (Spring Boot의 표준 환경 변수명 사용 시)
+            # export SPRING_DATASOURCE_URL="jdbc:postgresql://$DB_URL:$DB_PORT/..."
+            # nohup java -jar ${DEPLOY_PATH}/${JAR_NAME} > ${DEPLOY_PATH}/app.log 2>&1 &
             
             echo "Deployment and restart complete."
