@@ -1,101 +1,136 @@
-name: CI Pipeline
+name: CI - Test & Report
 
 on:
-  push:
-    branches: ["main"]
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+  pull-requests: write
+  checks: write
 
 jobs:
-  frontend-test:
-    name: Frontend Test & Build
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Use Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install dependencies
-        run: |
-          cd frontend
-          npm install
-
-      - name: Run Frontend Tests
-        run: |
-          cd frontend
-          npm test -- --watch=false --reporters=junit --reporter-options "outputFile=./test-results.xml"
-
-      - name: Build Frontend
-        run: |
-          cd frontend
-          npm run build
-
-      # -----------------------
-      # 📌 Frontend Artifacts 업로드
-      # -----------------------
-
-      - name: Upload Frontend Build Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-dist
-          path: frontend/dist/**
-          if-no-files-found: error
-
-      - name: Upload Frontend Test Result
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-test-report
-          path: frontend/test-results.xml
-          if-no-files-found: error
-
-
+  # -----------------------------------------------------------------
+  # JOB 1: Backend (Spring Boot) 테스트
+  # -----------------------------------------------------------------
   backend-test:
-    name: Backend Test & Build
     runs-on: ubuntu-latest
-    needs: frontend-test
+    defaults:
+      run:
+        working-directory: ./backend # 👈 Gradle 명령의 실행 위치 고정
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup JDK
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
           java-version: '21'
+          distribution: 'temurin'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x backend/gradlew
+      - name: Gradlew chmod +x
+        run: chmod +x ./gradlew
 
-      - name: Run Backend Tests
-        run: |
-          cd backend
-          ./gradlew test jacocoTestReport
+      # 빌드/테스트 실행
+      - name: Build Spring Boot JAR
+        run: ./gradlew bootJar
+      - name: Run Backend Tests and Generate Jacoco Report
+        run: ./gradlew clean test jacocoTestReport
 
-      - name: Build Backend JAR
-        run: |
-          cd backend
-          ./gradlew bootJar
-
-      # -----------------------
-      # 📌 Backend Artifacts 업로드
-      # -----------------------
-
-      - name: Upload Backend JAR
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-jar
-          path: backend/build/libs/*.jar
-          if-no-files-found: error
-
-      - name: Upload Jacoco Test Report
+      # 🚨 Upload 1: Jacoco Report 업로드 (working-directory 기준)
+      - name: Upload Jacoco Report
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-jacoco-report
-          path: backend/build/reports/jacoco/test/jacocoTestReport.xml
-          if-no-files-found: error
+          # working-directory: ./backend 안에서 생성된 파일을 바로 참조
+          path: build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+
+      # 🚨 Upload 2: Deployment JAR 업로드 (working-directory 기준)
+      - name: Upload Backend Deployment Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-backend-jar
+          path: build/libs/*.jar
+          retention-days: 7
+
+  # -----------------------------------------------------------------
+  # JOB 2: Frontend (React) 테스트
+  # -----------------------------------------------------------------
+  frontend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Frontend Tests
+        run: npm test -- --reporter=junit --outputFile=./test-results.xml
+
+      # 🚨 Upload 3: Frontend Test Results 업로드
+      - name: Upload Frontend Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          # ❌ 오류 수정: working-directory가 ./frontend 이므로 'frontend/' 제거
+          path: test-results.xml
+
+      - name: Build Frontend (For Deployment)
+        run: npm run build
+
+      # 🚨 Upload 4: Deployment DIST 업로드
+      - name: Upload Frontend Deployment Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-frontend-dist
+          path: dist/
+          retention-days: 7
+
+  # -----------------------------------------------------------------
+  # JOB 3: 결과 분석 및 PR 댓글 작성
+  # -----------------------------------------------------------------
+  report:
+    needs: [ backend-test, frontend-test ]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download Backend Jacoco Report
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jacoco-report
+          path: ./report_data/backend
+
+      - name: Download Frontend JUnit Report
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-test-results
+          path: ./report_data/frontend
+
+      - name: Publish Backend Coverage Report (Jacoco)
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          # 다운로드 위치 + 아티팩트 이름 폴더 + 파일명
+          paths: ./report_data/backend/backend-jacoco-report/jacocoTestReport.xml
+          title: 'Backend Code Coverage'
+          min-coverage-overall: '40'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish Frontend Test Results (JUnit)
+        uses: dorny/test-reporter@v1
+        with:
+          name: Frontend Test Results
+          # 다운로드 위치 + 아티팩트 이름 폴더 + 파일명
+          path: 'report_data/frontend/frontend-test-results/test-results.xml'
+          reporter: junit
+          token: ${{ secrets.GITHUB_TOKEN }}
