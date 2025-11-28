@@ -42,9 +42,10 @@ jobs:
         run: ./gradlew bootJar
 
       - name: Rename built JAR with sha
+        working-directory: ./backend
         run: |
-          SRC_JAR=$(ls -t backend/build/libs/*.jar | head -n 1)
-          cp "$SRC_JAR" "backend-${{ github.sha }}.jar"
+          SRC_JAR=$(ls -t build/libs/*.jar | head -n 1)
+          cp "$SRC_JAR" "build/libs/backend-${{ github.sha }}.jar"
           rm -r "$SRC_JAR"
 
       # ===========================
