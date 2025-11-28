@@ -33,7 +33,7 @@ jobs:
 
       # 권한 설정 (Gradle Wrapper 실행 권한 부여)
       - name: Grant Execute Permission for gradlew
-        run: chmod +x gradlew
+        run: chmod +x ./gradlew
 
       # 백엔드 빌드 (JAR 파일 생성). 빌드 결과는 일반적으로 'build/libs/'에 생성됩니다.
       - name: Build Backend JAR
