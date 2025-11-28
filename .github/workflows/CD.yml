@@ -8,6 +8,7 @@ on:
     types: [completed]
     # 3. main 브랜치에 대해서만 배포
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   # CD Job은 CI Job의 성공 여부에 따라 조건부 실행됩니다.
