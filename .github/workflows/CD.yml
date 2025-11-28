@@ -62,7 +62,6 @@ jobs:
       # --- 파일 전송 및 서비스 재시작 ---
       - name: Transfer Backend JAR to Server
         uses: appleboy/scp-action@v0.1.7
-        # ... (생략: secrets 사용, target: "~/backend") ...
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
@@ -73,7 +72,6 @@ jobs:
 
       - name: Transfer Frontend DIST to Server
         uses: appleboy/scp-action@v0.1.7
-        # ... (생략: secrets 사용, target: "~/frontend") ...
         with:
         host: ${{ secrets.DEPLOY_HOST }}
         username: ${{ secrets.DEPLOY_USER }}
@@ -84,7 +82,6 @@ jobs:
 
       - name: Stop, Rename, and Restart Application
         uses: appleboy/ssh-action@v1.0.3
-        # ... (생략: secrets 사용, java 명령어 실행) ...
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
