@@ -60,6 +60,22 @@ jacocoTestReport {
     }
 }
 
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            enabled true
+            element 'CLASS'
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.5
+            }
+            excludes = []
+        }
+    }
+}
+
 test {
     finalizedBy jacocoTestReport
 }
