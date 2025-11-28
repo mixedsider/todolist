@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./backend # 👈 Gradle 명령의 실행 위치를 backend/로 고정
+        working-directory: ./backend
 
     steps:
       - uses: actions/checkout@v4
@@ -28,7 +28,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Gradlew chmod +x
-        run: chmod +x gradlew # working-directory 기준이므로 './gradlew'로 실행
+        run: chmod +x gradlew
 
       - name: Code Style Apply
         run: ./gradlew spotlessApply
@@ -36,22 +36,22 @@ jobs:
       - name: Run Backend Tests and Generate Jacoco Report
         run: ./gradlew clean test jacocoTestReport
 
-      # 🚨 Upload 1: Jacoco Report 업로드 (Root 기준 경로 필요 없음)
+      # 🚨 Upload 1: Jacoco Report 업로드 (절대 경로 사용)
       - name: Upload Jacoco Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-jacoco-report
-          # working-directory: ./backend 이므로 build/ 폴더만 지정
-          path: build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          path: backend/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml  # 👈 루트 기준 절대경로
+          retention-days: 7
 
-      # 🚨 Upload 2: Deployment JAR 업로드 (Root 기준 경로 필요 없음)
+      # 🚨 Upload 2: Deployment JAR 업로드 (절대 경로 사용)
       - name: Upload Backend Deployment Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: deploy-backend-jar
-          # working-directory: ./backend 이므로 build/libs/ 폴더만 지정
-          path: build/libs/*.jar
+          path: backend/build/libs/*.jar  # 👈 루트 기준 절대경로
           retention-days: 7
 
   # -----------------------------------------------------------------
@@ -61,7 +61,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./frontend # 👈 Frontend 명령의 실행 위치를 frontend/로 고정
+        working-directory: ./frontend
 
     steps:
       - uses: actions/checkout@v4
@@ -74,26 +74,36 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      # 🚨 테스트 실행 + 결과 파일 생성 확인
       - name: Run Frontend Tests
-        run: npm test -- --reporter=junit --outputFile=./test-results.xml
+        run: |
+          npm test -- --reporter=junit --outputFile=./test-results.xml --watchAll=false
+          # 파일 생성 확인
+          ls -la test-results.xml || echo "test-results.xml not found"
 
-      # 🚨 Upload 3: Frontend Test Results 업로드
+      # 🚨 Upload 3: Frontend Test Results 업로드 (절대 경로 사용)
       - name: Upload Frontend Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: frontend-test-results
-          path: test-results.xml # working-directory 안의 경로
+          path: frontend/test-results.xml  # 👈 루트 기준 절대경로
+          retention-days: 7
 
-      - name: Build Frontend (For Deployment)
-        run: npm run build
+      # 🚨 빌드 실행 + 결과 확인
+      - name: Build Frontend
+        run: |
+          npm run build
+          # 빌드 결과 확인
+          ls -la dist/ || echo "dist/ not found"
 
-      # 🚨 Upload 4: Deployment DIST 업로드
+      # 🚨 Upload 4: Deployment DIST 업로드 (절대 경로 사용)
       - name: Upload Frontend Deployment Artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: deploy-frontend-dist
-          path: dist/ # working-directory 안의 경로
+          path: frontend/dist/**  # 👈 루트 기준 절대경로 + 재귀 포함
           retention-days: 7
 
   # -----------------------------------------------------------------
@@ -107,34 +117,45 @@ jobs:
     steps:
       # 1. Download Backend Jacoco Report
       - name: Download Backend Jacoco Report
+        if: always()
         uses: actions/download-artifact@v4
         with:
           name: backend-jacoco-report
-          path: ./report_data/backend
+          path: ./backend-jacoco  # 👈 단순한 폴더명
 
       # 2. Download Frontend JUnit Report
       - name: Download Frontend JUnit Report
+        if: always()
         uses: actions/download-artifact@v4
         with:
           name: frontend-test-results
-          path: ./report_data/frontend
+          path: ./frontend-junit   # 👈 단순한 폴더명
 
-      # 3. Publish Backend Coverage Report (Jacoco)
+      # 🚨 3. Publish Backend Coverage Report (Jacoco) - 경로 수정
       - name: Publish Backend Coverage Report (Jacoco)
+        if: always()
         uses: madrapps/jacoco-report@v1.6.1
         with:
-          # 다운로드 경로 + 아티팩트 이름 폴더 + 파일명
-          paths: ./report_data/backend/backend-jacoco-report/jacocoTestReport.xml
+          paths: ./backend-jacoco/jacocoTestReport.xml  # 👈 다운로드된 정확한 경로
           title: 'Backend Code Coverage'
           min-coverage-overall: '40'
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 4. Publish Frontend Test Results (JUnit)
+      # 🚨 4. Publish Frontend Test Results (JUnit) - 경로 수정
       - name: Publish Frontend Test Results (JUnit)
+        if: always()
         uses: dorny/test-reporter@v1
         with:
           name: Frontend Test Results
-          # 다운로드 경로 + 아티팩트 이름 폴더 + 파일명
-          path: 'report_data/frontend/frontend-test-results/test-results.xml'
+          path: ./frontend-junit/test-results.xml  # 👈 다운로드된 정확한 경로
           reporter: junit
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      # 🚨 5. 디버깅: 다운로드된 파일 확인
+      - name: Debug - List Downloaded Files
+        if: always()
+        run: |
+          echo "=== Backend Jacoco Files ==="
+          find ./backend-jacoco -type f || echo "No backend files"
+          echo "=== Frontend JUnit Files ==="
+          find ./frontend-junit -type f || echo "No frontend files"
