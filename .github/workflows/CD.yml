@@ -95,9 +95,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           # 💡 [수정] 동적으로 추출한 파일명으로 정확한 파일만 전송합니다.
-          source: "./backend/build/libs/${{ steps.set_jar_filename.outputs.jar_name }}"
+          source: "./backend/build/libs/*.jar"
           # 💡 [수정] Target 서버에도 고유한 파일명 그대로 저장합니다.
-          target: "~/backend/${{ steps.set_jar_filename.outputs.jar_name }}"
+          target: "~/backend/backend-${{ github.sha }}.jar"
 
           # Bastion Host 설정 (ProxyCommand 역할)
           proxy_host: ${{ secrets.BASTION_HOST }}
@@ -132,27 +132,26 @@ jobs:
             DEPLOY_PATH="/home/${DEPLOY_USER}/backend"
             
             # 💡 [수정] 실행할 JAR 파일 이름을 이전 단계에서 가져옵니다.
-            JAR_FILE_TO_RUN="${{ steps.set_jar_filename.outputs.jar_name }}"
+            JAR_FILE_TO_RUN="backend-${{ github.sha }}.jar"
             FINAL_JAR_PATH="${DEPLOY_PATH}/${JAR_FILE_TO_RUN}"
             
             # 2. 기존 프로세스 종료
-            # 일반적으로 애플리케이션 실행 명령어의 일부를 PID 검색 키워드로 사용합니다.
-            # 이전에 실행했던 backend.jar 또는 java 키워드로 PID를 찾습니다.
+            # 배포 경로의 모든 Java 프로세스를 종료합니다.
             CURRENT_PID=$(ps -ef | grep java | grep "${DEPLOY_PATH}" | grep -v grep | awk '{print $2}')
-            
+
             if [ -n "$CURRENT_PID" ]; then
               echo "Stopping old process with PID: $CURRENT_PID"; kill -9 $CURRENT_PID; sleep 5;
             else
               echo "Active Java process not found. Proceeding to deployment."
             fi
-            
+
             # 3. 새로운 JAR 파일 실행
             if [ -f "$FINAL_JAR_PATH" ]; then
               echo "✅ 새로운 JAR 파일 ($FINAL_JAR_PATH) 실행."
-              # JAR 파일에 실행 권한이 부족할 경우를 대비하여 권한을 명시적으로 부여합니다.
+              # 권한 부여 (혹시 모를 실행 권한 문제 방지)
               chmod 744 "$FINAL_JAR_PATH"
-            
-              # nohup을 사용하여 백그라운드에서 실행하고, 환경 변수를 인라인으로 전달
+
+              # nohup을 사용하여 백그라운드에서 실행
               nohup java -jar \
                 -Dspring.datasource.url=$DB_URL \
                 -Dspring.datasource.username=$DB_USER \
@@ -165,6 +164,6 @@ jobs:
             fi
             
             # 4. SSH 세션 종료
-            sleep 5 # 백그라운드 프로세스 시작 대기
+            sleep 5
             echo "Deployment initiated. Disconnecting SSH session successfully."
             exit 0
