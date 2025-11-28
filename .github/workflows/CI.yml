@@ -2,7 +2,7 @@ name: CI - Test & Report
 
 on:
   pull_request:
-    branches: [ "main", "develop" ] # PR이 생성되거나 업데이트될 때 실행
+    branches: [ "main" ] # PR이 생성되거나 업데이트될 때 실행
 
 permissions:
   contents: read
@@ -44,6 +44,17 @@ jobs:
           name: backend-jacoco-report
           path: backend/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
 
+      - name: Build Spring Boot JAR (For Deployment)
+        run: ./gradlew bootJar # 이미 빌드된 JAR 파일을 다시 빌드
+        working-directory: ./backend
+
+      - name: Upload Backend Deployment Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-backend-jar
+          path: backend/build/libs/*.jar
+          retention-days: 7 # 배포를 위해 일주일간 보관
+
   # -----------------------------------------------------------------
   # JOB 2: Frontend (React) 테스트
   # -----------------------------------------------------------------
@@ -74,6 +85,17 @@ jobs:
         with:
           name: frontend-test-results
           path: frontend/test-results.xml
+
+      - name: Build Frontend (For Deployment)
+        run: npm run build
+        working-directory: ./frontend
+
+      - name: Upload Frontend Deployment Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-frontend-dist
+          path: frontend/dist/
+          retention-days: 7
 
   # -----------------------------------------------------------------
   # JOB 3: 결과 분석 및 PR 댓글 작성
