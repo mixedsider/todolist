@@ -1,27 +1,28 @@
 name: CD - Build and Deploy
 
-# main 브랜치에 코드가 푸시될 때 워크플로우 실행
 on:
+  # main 브랜치에 코드가 푸시된 PR에서만 실행
   pull_request:
-    branches: [main]
+    branches: [ main ]
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    environment: DEPLOY # 배포 환경 지정 (선택 사항)
+    environment: DEPLOY
 
     steps:
-      # 1. 최신 커밋 체크아웃
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # ==========================================================
-      # 2. 백엔드(Java/Spring Boot) 빌드 설정 (Working Directory: backend)
-      # ==========================================================
+      # ===========================
+      # 2. Backend (Spring Boot)
+      # ===========================
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.gradle/caches
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
           key: ${{ runner.os }}-gradle-${{ hashFiles('backend/build.gradle*', 'backend/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
@@ -33,16 +34,16 @@ jobs:
           distribution: 'temurin'
 
       - name: Grant Execute Permission for gradlew
-        run: chmod +x ./backend/gradlew
+        working-directory: ./backend
+        run: chmod +x ./gradlew
 
-      # 백엔드 빌드 실행
       - name: Build Backend JAR
         working-directory: ./backend
         run: ./gradlew bootJar
 
-      # ==========================================================
-      # 3. 프론트엔드(Node.js) 빌드 설정 (Working Directory: frontend)
-      # ==========================================================
+      # ===========================
+      # 3. Frontend (Node)
+      # ===========================
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
@@ -52,118 +53,107 @@ jobs:
 
       - name: Install Frontend Dependencies
         working-directory: ./frontend
-        run: npm install
+        run: npm ci
 
-      # 프론트엔드 빌드 실행
       - name: Build Frontend DIST
         working-directory: ./frontend
         run: npm run build
 
-      # ==========================================================
-      # 4. 배포 (SSH 연결 및 파일 전송)
-      # ==========================================================
-
-      # SSH 에이전트 설정 및 키 로드
-      - name: Set up SSH Agent and Keys
+      # ===========================
+      # 4. Deploy
+      # ===========================
+      - name: Set up SSH Agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # ----------------------------------------------------------
-      # 4-1. Frontend DIST 파일 서버로 직접 전송 (BASTION_HOST = Frontend Deploy Target)
-      # ----------------------------------------------------------
+      # 4-1. Frontend dist 전송 (target은 "디렉터리" 여야 함)
       - name: Transfer Frontend DIST to Bastion/Frontend Server
         uses: appleboy/scp-action@v0.1.7
         with:
-          # 프론트엔드는 Bastion 호스트에 직접 배포
           host: ${{ secrets.BASTION_HOST }}
           username: ${{ secrets.BASTION_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: ${{ secrets.BASTION_HOST_PORT }}
-          source: "frontend/dist/*"
-          target: "~/frontend"
-          strip_components: 2
+          # dist 안의 파일들을 전송하고 싶다면 보통 이렇게 씁니다.
+          source: "frontend/dist/"
+          target: "~/frontend"   # ← 디렉터리만 허용
 
-      # ----------------------------------------------------------
-      # 4-2. Backend JAR 파일 Target Server로 Proxy를 통해 전송
-      # ----------------------------------------------------------
+      # 4-2. Backend JAR 전송 (proxy 사용)
       - name: Transfer Backend JAR to Target Server (via Bastion)
         uses: appleboy/scp-action@v0.1.7
         with:
-          # Target Server 접속 정보 (내부 IP)
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # 💡 [수정] 동적으로 추출한 파일명으로 정확한 파일만 전송합니다.
-          source: "./backend/build/libs/*.jar"
-          # 💡 [수정] Target 서버에도 고유한 파일명 그대로 저장합니다.
-          target: "~/backend/backend-${{ github.sha }}.jar"
+          port: 22
 
-          # Bastion Host 설정 (ProxyCommand 역할)
+          # JAR가 만들어지는 실제 경로 확인 필요 (예: backend-0.0.1-SNAPSHOT.jar 등)
+          source: "backend/build/libs/*.jar"
+
+          # target은 디렉터리여야 하므로, 파일명까지 쓰지 말고 디렉터리만 지정
+          target: "~/backend"
+
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ${{ secrets.BASTION_USER }}
           proxy_port: ${{ secrets.BASTION_HOST_PORT }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # ----------------------------------------------------------
-      # 4-3. Target Server에서 서비스 재시작 (Proxy를 통해 SSH 명령 실행)
-      # ----------------------------------------------------------
+      # 4-3. Target 서버에서 JAR rename + 재시작
       - name: Stop, Rename, and Restart Backend Application (via Bastion)
         uses: appleboy/ssh-action@v1.0.3
         with:
-          # Target Server 접속 정보 (내부 IP)
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
 
-          # Bastion Host 설정
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ${{ secrets.BASTION_USER }}
           proxy_port: ${{ secrets.BASTION_HOST_PORT }}
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
           script: |
-            # 1. 환경 변수 정의
             DB_URL="${{ secrets.DB_URL }}"
             DB_USER="${{ secrets.DB_USERNAME }}"
             DB_PASS="${{ secrets.DB_PASSWORD }}"
             DEPLOY_USER="${{ secrets.DEPLOY_USER }}"
-            
+
             DEPLOY_PATH="/home/${DEPLOY_USER}/backend"
-            
-            # 💡 [수정] 실행할 JAR 파일 이름을 이전 단계에서 가져옵니다.
-            JAR_FILE_TO_RUN="backend-${{ github.sha }}.jar"
-            FINAL_JAR_PATH="${DEPLOY_PATH}/${JAR_FILE_TO_RUN}"
-            
-            # 2. 기존 프로세스 종료
-            # 배포 경로의 모든 Java 프로세스를 종료합니다.
+
+            # 배포된 JAR 중 가장 최근 파일을 backend-${GITHUB_SHA}.jar 로 교체
+            cd "${DEPLOY_PATH}"
+
+            # 새로 업로드된 JAR (예: backend-0.0.1-SNAPSHOT.jar) 찾기
+            # 실제 파일명 패턴에 맞게 수정 필요
+            NEW_JAR=$(ls -t *.jar | head -n 1)
+
+            if [ -z "$NEW_JAR" ]; then
+              echo "새 JAR 파일을 찾을 수 없습니다."
+              exit 1
+            fi
+
+            TARGET_JAR="backend-${GITHUB_SHA}.jar"
+            cp "$NEW_JAR" "$TARGET_JAR"
+
             CURRENT_PID=$(ps -ef | grep java | grep "${DEPLOY_PATH}" | grep -v grep | awk '{print $2}')
 
             if [ -n "$CURRENT_PID" ]; then
-              echo "Stopping old process with PID: $CURRENT_PID"; kill -9 $CURRENT_PID; sleep 5;
+              echo "Stopping old process with PID: $CURRENT_PID"
+              kill -9 "$CURRENT_PID"
+              sleep 5
             else
               echo "Active Java process not found. Proceeding to deployment."
             fi
 
-            # 3. 새로운 JAR 파일 실행
-            if [ -f "$FINAL_JAR_PATH" ]; then
-              echo "✅ 새로운 JAR 파일 ($FINAL_JAR_PATH) 실행."
-              # 권한 부여 (혹시 모를 실행 권한 문제 방지)
-              chmod 744 "$FINAL_JAR_PATH"
+            chmod 744 "$TARGET_JAR"
 
-              # nohup을 사용하여 백그라운드에서 실행
-              nohup java -jar \
-                -Dspring.datasource.url=$DB_URL \
-                -Dspring.datasource.username=$DB_USER \
-                -Dspring.datasource.password=$DB_PASS \
-                "$FINAL_JAR_PATH" \
-                > ${DEPLOY_PATH}/app.log 2>&1 &
-            else
-              echo "❌ 실행할 새로운 JAR 파일 ($FINAL_JAR_PATH)을 찾을 수 없습니다. 배포 실패."
-              exit 1
-            fi
-            
-            # 4. SSH 세션 종료
+            nohup java \
+              -Dspring.datasource.url="$DB_URL" \
+              -Dspring.datasource.username="$DB_USER" \
+              -Dspring.datasource.password="$DB_PASS" \
+              -jar "$TARGET_JAR" \
+              > "${DEPLOY_PATH}/app.log" 2>&1 &
+
             sleep 5
             echo "Deployment initiated. Disconnecting SSH session successfully."
-            exit 0
