@@ -47,6 +47,8 @@ jobs:
           SRC_JAR=$(ls -t build/libs/*.jar | head -n 1)
           echo $SRC_JAR
           mv "$SRC_JAR" "build/libs/backend-${{ github.sha }}.jar"
+          SDFG=$(tree build)
+          echo $SDFG
 
       # ===========================
       # 3. Frontend (Node)
