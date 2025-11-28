@@ -48,8 +48,8 @@ class TodoControllerTest {
 
     // 서비스가 반환할 데이터 준비
     List<TodoResponse> mockTodos = List.of(
-        new TodoResponse(10L, "스프링 공부", false, LocalDateTime.now()),
-        new TodoResponse(11L, "운동하기", true, LocalDateTime.now())
+        new TodoResponse(10L, "스프링 공부", false, LocalDateTime.now(), null),
+        new TodoResponse(11L, "운동하기", true, LocalDateTime.now(), null)
     );
     given(todoService.getMyTodos(memberId)).willReturn(mockTodos);
 
