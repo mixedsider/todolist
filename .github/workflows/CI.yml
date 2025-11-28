@@ -25,13 +25,9 @@ jobs:
       - name: Gradlew chmod +x
         run: chmod +x ./gradlew
 
-      - name: Build Spring Boot JAR (For Deployment)
-        run: ./gradlew bootJar
-
-
       # 테스트 실행 (이 단계에서 build/reports/jacoco/jacocoTestReport.xml 파일이 생성됨)
       - name: Run Backend Tests and Generate Jacoco Report
-        run: ./gradlew clean build jacocoTestReport
+        run: ./gradlew clean test jacocoTestReport
 
       # 🚨 수정 1: Jacoco Report 업로드 경로 (Artifacts는 루트 기준)
       - name: Publish Unit Test Results
@@ -39,18 +35,9 @@ jobs:
         if: always()  # 테스트가 실패하여도 Report를 보기 위해 `always`로 설정
         with:
           name: Maven Tests
-          path: build/**/*.xml
+          path: backend/build/**/*.xml
           reporter: java-junit
           fail-on-error: true
-
-      # 🚨 수정 2: Deployment JAR 업로드 경로
-      - name: Upload Backend Deployment Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-backend-jar
-          # Workspace Root (CI 루트)에서부터 backend 폴더를 명시
-          path: backend/build/libs/*.jar
-          retention-days: 7
 
   # -----------------------------------------------------------------
   # JOB 2: Frontend (React) 테스트
