@@ -22,13 +22,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      - name: Code Style Apply
+        run: ./gradlew spotlessApply
 
       - name: Run Backend Tests and Generate Jacoco Report
         # gradlew test를 실행하면 build.gradle 설정에 따라 jacocoTestReport도 실행됨
@@ -99,10 +102,10 @@ jobs:
         with:
           paths: ${{ steps.download-backend-report.outputs.download-path }}/jacocoTestReport.xml
           # Jacoco Action이 PR에 코멘트를 달아줍니다.
-          github_token: ${{ secrets.GITHUB_TOKEN }}
           title: 'Backend Code Coverage'
           # 최소 커버리지 기준 설정 (옵션)
-          minimum_coverage_overall: 0
+          min-coverage-overall: '40'
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       # ✨ [NEW] Action 2: Frontend JUnit 리포트 분석 및 PR에 게시
       - name: Publish Frontend Test Results (JUnit)
