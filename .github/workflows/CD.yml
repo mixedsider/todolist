@@ -26,10 +26,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Grant Execute Permission for gradlew
@@ -79,6 +79,7 @@ jobs:
           host: ${{ secrets.BASTION_HOST }}
           username: ${{ secrets.BASTION_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.BASTION_HOST_PORT }}
           source: "frontend/dist/*"
           target: "~/frontend"
           strip_components: 2
@@ -100,6 +101,8 @@ jobs:
           # Bastion Host 설정 (ProxyCommand 역할)
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ${{ secrets.BASTION_USER }}
+          proxy_port: ${{ secrets.BASTION_HOST_PORT }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       # ----------------------------------------------------------
       # 4-3. Target Server에서 서비스 재시작 (Proxy를 통해 SSH 명령 실행)
@@ -115,6 +118,8 @@ jobs:
           # Bastion Host 설정
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ${{ secrets.BASTION_USER }}
+          proxy_port: ${{ secrets.BASTION_HOST_PORT }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
           # 메모리 부족 회피를 위한 exit 0 로직이 포함된 스크립트
           script: |
