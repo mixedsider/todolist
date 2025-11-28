@@ -15,11 +15,12 @@ jobs:
   # -----------------------------------------------------------------
   backend-test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend # 👈 Gradle 명령의 실행 위치를 backend/로 고정
 
     steps:
       - uses: actions/checkout@v4
-
-      # 1. Java 설정 (이전 단계에서 누락된 세부 내용 복원)
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
@@ -27,31 +28,30 @@ jobs:
           distribution: 'temurin'
 
       - name: Gradlew chmod +x
-        run: chmod +x ./backend/gradlew
+        run: chmod +x gradlew # working-directory 기준이므로 './gradlew'로 실행
 
-      # 2. Code Style Apply (누락된 run 명령 복원)
       - name: Code Style Apply
-        run: ./backend/gradlew spotlessApply
+        run: ./gradlew spotlessApply
 
       - name: Run Backend Tests and Generate Jacoco Report
-        run: ./backend/gradlew clean test jacocoTestReport
+        run: ./gradlew clean test jacocoTestReport
 
-      - name: Build Spring Boot JAR (For Deployment)
-        run: ./backend/gradlew bootJar
-
-      # Artifact Uploads (경로 수정 완료된 코드)
+      # 🚨 Upload 1: Jacoco Report 업로드 (Root 기준 경로 필요 없음)
       - name: Upload Jacoco Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-jacoco-report
-          path: backend/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          # working-directory: ./backend 이므로 build/ 폴더만 지정
+          path: build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
 
+      # 🚨 Upload 2: Deployment JAR 업로드 (Root 기준 경로 필요 없음)
       - name: Upload Backend Deployment Artifact
         uses: actions/upload-artifact@v4
         with:
           name: deploy-backend-jar
-          path: backend/build/libs/*.jar
+          # working-directory: ./backend 이므로 build/libs/ 폴더만 지정
+          path: build/libs/*.jar
           retention-days: 7
 
   # -----------------------------------------------------------------
@@ -61,12 +61,11 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./frontend # 👈 모든 명령이 ./frontend 안에서 실행됨
+        working-directory: ./frontend # 👈 Frontend 명령의 실행 위치를 frontend/로 고정
 
     steps:
       - uses: actions/checkout@v4
 
-      # 3. Node.js 설정 (이전 단계에서 누락된 세부 내용 복원)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -78,22 +77,23 @@ jobs:
       - name: Run Frontend Tests
         run: npm test -- --reporter=junit --outputFile=./test-results.xml
 
-      # Artifact Uploads (working-directory 기준으로 경로 설정)
+      # 🚨 Upload 3: Frontend Test Results 업로드
       - name: Upload Frontend Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: frontend-test-results
-          path: test-results.xml # ./frontend/test-results.xml
+          path: test-results.xml # working-directory 안의 경로
 
       - name: Build Frontend (For Deployment)
         run: npm run build
 
+      # 🚨 Upload 4: Deployment DIST 업로드
       - name: Upload Frontend Deployment Artifact
         uses: actions/upload-artifact@v4
         with:
           name: deploy-frontend-dist
-          path: dist/ # ./frontend/dist/
+          path: dist/ # working-directory 안의 경로
           retention-days: 7
 
   # -----------------------------------------------------------------
@@ -105,30 +105,36 @@ jobs:
     if: always()
 
     steps:
+      # 1. Download Backend Jacoco Report
       - name: Download Backend Jacoco Report
         uses: actions/download-artifact@v4
         with:
           name: backend-jacoco-report
           path: ./report_data/backend
 
+      # 2. Download Frontend JUnit Report
       - name: Download Frontend JUnit Report
         uses: actions/download-artifact@v4
         with:
           name: frontend-test-results
           path: ./report_data/frontend
 
+      # 3. Publish Backend Coverage Report (Jacoco)
       - name: Publish Backend Coverage Report (Jacoco)
         uses: madrapps/jacoco-report@v1.6.1
         with:
+          # 다운로드 경로 + 아티팩트 이름 폴더 + 파일명
           paths: ./report_data/backend/backend-jacoco-report/jacocoTestReport.xml
           title: 'Backend Code Coverage'
           min-coverage-overall: '40'
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # 4. Publish Frontend Test Results (JUnit)
       - name: Publish Frontend Test Results (JUnit)
         uses: dorny/test-reporter@v1
         with:
           name: Frontend Test Results
+          # 다운로드 경로 + 아티팩트 이름 폴더 + 파일명
           path: 'report_data/frontend/frontend-test-results/test-results.xml'
           reporter: junit
           token: ${{ secrets.GITHUB_TOKEN }}
