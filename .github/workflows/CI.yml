@@ -74,6 +74,6 @@ jobs:
         if: always()
         with:
           name: Frontend Unit Tests
-          path: test-results.xml # working-directory (./frontend) 기준
+          path: frontend/test-results.xml # working-directory (./frontend) 기준
           reporter: jest-junit
           token: ${{ secrets.GITHUB_TOKEN }}
