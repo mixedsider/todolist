@@ -131,8 +131,54 @@ jobs:
       - name: Publish Frontend Test Results (JUnit)
         uses: dorny/test-reporter@v1
         with:
-          name: Frontend Test Results
+          name: Frontend Test Reports
           # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
           path: './report_data/frontend/**/test-results.xml'
           reporter: jest-junit
           token: ${{ secrets.GITHUB_TOKEN }}
+      # 4. Frontend JUnit Report 파일 읽기 및 댓글 추가
+      - name: Generate Frontend Summary
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            
+            const resultsPath = './report_data/frontend/frontend-test-results/test-results.xml';
+            let summary = '### ❌ Frontend Test Report - Error';
+            
+            if (fs.existsSync(resultsPath)) {
+                const content = fs.readFileSync(resultsPath, 'utf8');
+            
+                // JUnit XML에서 통계 추출 (tests="X" failures="Y")
+                const testsMatch = content.match(/tests="(\d+)"/);
+                const failuresMatch = content.match(/failures="(\d+)"/);
+            
+                const total = testsMatch ? parseInt(testsMatch[1]) : 0;
+                const failed = failuresMatch ? parseInt(failuresMatch[1]) : 0;
+                const passed = total - failed;
+                const rate = total > 0 ? ((passed / total) * 100).toFixed(1) : 0;
+                const icon = failed === 0 ? '✅' : '❌';
+            
+                summary = `
+                  ## ${icon} Frontend Test Summary
+            
+                  | Status | Passed | Total | Rate |
+                  | :---: | :---: | :---: | :---: |
+                  | **Tests** | ${passed} | ${total} | **${rate}%** |
+            
+                  ${failed > 0 ? `⚠️ ${failed} tests failed in the run.` : ''}
+                `;
+            } else {
+                 summary = '### ⚠️ Frontend Test Report - File Not Found';
+            }
+            
+            // 기존 댓글에 덧붙여서 통합된 결과처럼 보이도록 합니다.
+            // (주의: madrapps/jacoco-report가 먼저 댓글을 단 후, 이 스크립트가 두 번째 댓글을 달게 됩니다.)
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });
