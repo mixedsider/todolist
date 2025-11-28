@@ -31,7 +31,7 @@ jobs:
 
       # 테스트 실행 (이 단계에서 build/reports/jacoco/jacocoTestReport.xml 파일이 생성됨)
       - name: Run Backend Tests and Generate Jacoco Report
-        run: ./gradlew clean test jacocoTestReport
+        run: ./gradlew clean build jacocoTestReport
 
       # 🚨 수정 1: Jacoco Report 업로드 경로 (Artifacts는 루트 기준)
       - name: Upload Jacoco Report
