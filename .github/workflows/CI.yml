@@ -45,6 +45,14 @@ jobs:
           reporter: java-junit # 표준 Gradle JUnit XML 파서 사용
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Publish Backend Coverage Comment (Jacoco)
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: ./report_data/backend-jacoco-report/**/*.xml
+          title: 'Backend Code Coverage'
+          min-coverage-overall: '40'
+          token: ${{ secrets.GITHUB_TOKEN }}
+
   # -----------------------------------------------------------------
   # JOB 2: Frontend (React) 테스트
   # -----------------------------------------------------------------

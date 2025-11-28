@@ -1,85 +1,99 @@
-name: CD - Deploy to Remote Server (Dependent on CI)
+name: CD - Build and Deploy to Remote Server
 
+# main 브랜치에 코드가 푸시될 때 워크플로우 실행
 on:
-  workflow_run:
-    # 1. CI 워크플로우의 이름으로 설정 (ci.yml 파일의 name 필드와 일치해야 함)
-    workflows: ["CI - Test & Report"]
-    # 2. CI 워크플로우가 완료(completed)되었을 때만 트리거
-    types: [completed]
-    # 3. main 브랜치에 대해서만 배포
+  pull_request:
     branches: [main]
 
 jobs:
-  # CD Job은 CI Job의 성공 여부에 따라 조건부 실행됩니다.
-  deploy:
-    # CI 워크플로우의 결론(conclusion)이 'success'일 때만 실행
-    #if: ${{ github.event.workflow_run.conclusion == 'success' }}
+  build-and-deploy:
     runs-on: ubuntu-latest
+    environment: Production # 배포 환경 지정 (선택 사항)
 
     steps:
-      # 1. 원격 CI 워크플로우의 커밋으로 체크아웃 (CI가 실행된 시점의 코드를 가져옴)
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+      # 1. 최신 커밋 체크아웃
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      # 2. Artifacts 다운로드 (CI에서 업로드된 파일 가져오기)
-      # 다운로드할 워크플로우 ID를 참조해야 합니다.
-      - name: Get CI Artifacts ID
-        uses: actions/github-script@v7
-        id: get-artifact
+      # Gradle 빌드 속도 향상을 위한 캐시 설정 (backend 폴더를 기준으로 캐시)
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
         with:
-          script: |
-            // CI 워크플로우 실행 ID를 기반으로 아티팩트 ID를 찾습니다.
-            const runId = context.payload.workflow_run.id;
-            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              run_id: runId,
-            });
-            // 다운로드할 아티팩트 목록을 찾습니다.
-            core.setOutput('run_id', runId);
-            core.setOutput('backend_id', artifacts.data.artifacts.find(a => a.name === 'deploy-backend-jar').id);
-            core.setOutput('frontend_id', artifacts.data.artifacts.find(a => a.name === 'deploy-frontend-dist').id);
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/build.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
 
-      - name: Download Backend JAR Artifact
-        uses: actions/download-artifact@v4
+      # Java 17 설정 (사용하시는 버전에 맞게 수정하세요)
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
-          name: deploy-backend-jar
-          path: ./artifacts/backend/
+          java-version: '21'
+          distribution: 'temurin'
 
-      - name: Download Frontend DIST Artifact
-        uses: actions/download-artifact@v4
+      # 권한 설정 (Gradle Wrapper 실행 권한 부여)
+      - name: Grant Execute Permission for gradlew
+        run: chmod +x gradlew
+
+      # 백엔드 빌드 (JAR 파일 생성). 빌드 결과는 일반적으로 'build/libs/'에 생성됩니다.
+      - name: Build Backend JAR
+        run: ./gradlew bootJar
+
+      # ==========================================================
+      # 3. 프론트엔드(Node.js) 빌드 설정
+      # ==========================================================
+
+      # Node.js 20 설정 (사용하시는 버전에 맞게 수정하세요)
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
         with:
-          name: deploy-frontend-dist
-          path: ./artifacts/frontend/
+          node-version: '20'
+          cache: 'npm' # npm 캐시 사용
 
-      # --- (이하 SSH 설정 및 배포 로직은 이전과 동일) ---
+      # 의존성 설치
+      - name: Install Frontend Dependencies
+        run: npm install
+
+      # 프론트엔드 빌드 (정적 파일 생성). 빌드 결과는 일반적으로 'dist/' 또는 'build/'에 생성됩니다.
+      - name: Build Frontend DIST
+        run: npm run build # package.json에 정의된 build 스크립트를 실행
+
+      # ==========================================================
+      # 4. 배포 (SSH 연결 및 파일 전송)
+      # ==========================================================
+
+      # SSH 에이전트 설정 및 키 로드
       - name: Set up SSH Agent and Keys
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # --- 파일 전송 및 서비스 재시작 ---
+      # 백엔드 JAR 파일 서버로 전송 (빌드 경로를 'build/libs/*.jar'로 가정)
       - name: Transfer Backend JAR to Server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "artifacts/backend/*.jar"
+          # 빌드된 JAR 파일의 경로를 정확히 지정해야 합니다.
+          source: "build/libs/*.jar"
           target: "~/backend"
-          strip_components: 2
+          # JAR 파일이 포함된 디렉토리(libs)를 제외하고, JAR 파일 자체만 전송합니다.
+          strip_components: 2 # build/libs/ 를 제외하기 위해 2로 설정
 
+      # 프론트엔드 DIST 파일 서버로 전송 (빌드 경로를 'dist/*'로 가정)
       - name: Transfer Frontend DIST to Server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "artifacts/frontend/dist/*"
+          # 빌드된 정적 파일의 경로를 정확히 지정해야 합니다.
+          source: "dist/*"
           target: "~/frontend"
-          strip_components: 2
+          strip_components: 1 # dist/ 를 제외하기 위해 1로 설정
 
+      # 원격 서버에서 서비스 재시작 및 환경 변수 설정
       - name: Stop, Rename, and Restart Application
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -87,33 +101,35 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-          # 🚨 스크립트 수정 부분 🚨
+          # 🚨 기존에 사용하시던 재시작 스크립트를 그대로 사용합니다. 🚨
           script: |
-            # 1. 환경 변수 정의
-            # ${{ secrets.SECRET_NAME }} 문법으로 GitHub Secrets 값을 읽어와 bash 변수로 선언합니다.
-            DB_URL="${{ vars.DB_URL }}"          # 일반 환경 변수 (vars.)
-            DB_USER="${{ secrets.DB_USERNAME }}" # 시크릿 변수 (secrets.)
+            # 1. 환경 변수 정의 (기존 설정 유지)
+            DB_URL="${{ vars.DB_URL }}"
+            DB_USER="${{ secrets.DB_USERNAME }}"
             DB_PASS="${{ secrets.DB_PASSWORD }}"
-            DB_PORT="${{ vars.DB_PORT }}"         # 일반 환경 변수 (vars.)
-            
-            # Spring Boot가 인식하는 환경 변수 이름으로 매핑 (선택사항, 하지만 권장)
-            # DB_URL, DB_USERNAME, DB_PASSWORD, DB_PORT 는 예시입니다.
-            # Spring Boot의 표준 환경 변수명(SPRING_DATASOURCE_URL 등)을 사용하는 것이 일반적입니다.
-            
+            DB_PORT="${{ vars.DB_PORT }}"
+
             DEPLOY_PATH="/home/${{ secrets.DEPLOY_USER }}/backend"
-            JAR_NAME="backend.jar"
-            
+            JAR_NAME="backend.jar" # 배포 경로에 있는 JAR 파일 이름
+
             # (중략: 기존 프로세스 종료 및 파일 교체 로직)
             CURRENT_PID=$(ps -ef | grep java | grep "${JAR_NAME}" | awk '{print $2}')
             if [ -n "$CURRENT_PID" ]; then
               echo "Stopping process with PID: $CURRENT_PID"; kill -9 $CURRENT_PID; sleep 5;
             fi
-            
+
             # ----------------------------------------------------
-            # 2. 애플리케이션 재실행 시 환경 변수/시스템 속성 전달 (가장 중요한 부분)
+            # 2. 애플리케이션 재실행 시 환경 변수/시스템 속성 전달
             # ----------------------------------------------------
+
+            # JAR 파일의 이름을 임시로 변경하고, 새로 받은 JAR 파일을 JAR_NAME으로 복사
+            LATEST_JAR=$(ls -t ${DEPLOY_PATH}/*.jar | head -n 1)
+            if [ -f "$LATEST_JAR" ] && [ "$LATEST_JAR" != "${DEPLOY_PATH}/${JAR_NAME}" ]; then
+              echo "Moving new JAR: $LATEST_JAR to ${DEPLOY_PATH}/${JAR_NAME}"
+              mv $LATEST_JAR ${DEPLOY_PATH}/${JAR_NAME}
+            fi
             
-            # 방법 1: -D 시스템 속성 전달 (DB_URL을 Spring이 바로 읽는다고 가정)
+            # -D 시스템 속성 전달 방식으로 Spring Boot 애플리케이션 실행
             echo "Starting application with properties..."
             nohup java -jar \
               -DB_URL=$DB_URL \
@@ -122,11 +138,5 @@ jobs:
               -DB_PORT=$DB_PORT \
               ${DEPLOY_PATH}/${JAR_NAME} \
               > ${DEPLOY_PATH}/app.log 2>&1 &
-            
-            # --- OR ---
-            
-            # 방법 2: Export 환경 변수 전달 (Spring Boot의 표준 환경 변수명 사용 시)
-            # export SPRING_DATASOURCE_URL="jdbc:postgresql://$DB_URL:$DB_PORT/..."
-            # nohup java -jar ${DEPLOY_PATH}/${JAR_NAME} > ${DEPLOY_PATH}/app.log 2>&1 &
             
             echo "Deployment and restart complete."
