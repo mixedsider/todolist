@@ -92,7 +92,7 @@ jobs:
           source: "backend/build/libs/*.jar"
 
           # target은 디렉터리여야 하므로, 파일명까지 쓰지 말고 디렉터리만 지정
-          target: "~/backend"
+          target: "~/backend/backend-${{ github.sha }}.jar"
 
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ${{ secrets.BASTION_USER }}
@@ -122,12 +122,13 @@ jobs:
             DB_USER="${{ secrets.DB_USERNAME }}"
             DB_PASS="${{ secrets.DB_PASSWORD }}"
             DEPLOY_USER="${{ secrets.DEPLOY_USER }}"
+            SHA="${{ github.sha }}"
 
-            DEPLOY_PATH="/home/${DEPLOY_USER}/backend"
+            DEPLOY_PATH="/home/$DEPLOY_USER/backend"
 
             # 여기서는 GitHub Expression 쓰지 말고, env 로 전달된 GITHUB_SHA 사용
-            TARGET_JAR_NAME="backend-${GITHUB_SHA}.jar"
-            FINAL_JAR_PATH="${DEPLOY_PATH}/${TARGET_JAR_NAME}"
+            TARGET_JAR_NAME="backend-$SHA.jar"
+            FINAL_JAR_PATH="$DEPLOY_PATH/$TARGET_JAR_NAME"
 
             echo "Deployment started..."
             echo "Target Jar: $FINAL_JAR_PATH"
