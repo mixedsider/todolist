@@ -128,6 +128,7 @@ jobs:
 #          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish Backend Test Results (JUnit)
         uses: dorny/test-reporter@v1
+        if: always()
         with:
           name: Backend Test Results
           # Backend JUnit XML 파일 경로 (Gradle은 여러 XML을 생성하므로 와일드카드 사용)
@@ -138,6 +139,7 @@ jobs:
       # 4. Publish Frontend Test Results (JUnit)
       - name: Publish Frontend Test Results (JUnit)
         uses: dorny/test-reporter@v1
+        if: always()
         with:
           name: Frontend Test Reports
           # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
