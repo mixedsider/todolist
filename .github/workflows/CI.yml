@@ -21,7 +21,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      # ... (Set up Java, Code Style, Run Tests) ...
+
+      - name: Build Spring Boot JAR (For Deployment)
+        run: ./gradlew bootJar
+        working-directory: ./backend # 👈 이 줄이 누락되었다면 추가해야 합니다!
 
       - name: Upload Jacoco Report
         if: always()
