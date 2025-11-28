@@ -132,7 +132,7 @@ jobs:
         with:
           name: Backend Test Results
           # Backend JUnit XML 파일 경로 (Gradle은 여러 XML을 생성하므로 와일드카드 사용)
-          path: 'report_data/backend/backend-test-results/jacocoTestReport.xml'
+          path: './report_data/backend/**/jacocoTestReport.xml'
           reporter: java-junit
           token: ${{ secrets.GITHUB_TOKEN }}
 
