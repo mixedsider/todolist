@@ -41,7 +41,7 @@ jobs:
         with:
           name: Backend Unit Tests
           # Gradle은 build/test-results/test/ 폴더에 XML 파일을 생성합니다.
-          path: build/test-results/test/*.xml
+          path: backend/build/test-results/test/*.xml
           reporter: java-junit # 표준 Gradle JUnit XML 파서 사용
           token: ${{ secrets.GITHUB_TOKEN }}
 
@@ -56,7 +56,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -66,14 +65,15 @@ jobs:
         run: npm ci
 
       - name: Run Frontend Tests
-        # Vitest 결과를 JUnit XML 포맷으로 출력 (--reporter=junit --outputFile=...)
+        # 테스트 실행 및 JUnit XML 출력
         run: npm test -- --reporter=junit --outputFile=./test-results.xml
 
-      - name: Publish Frontend Test Results
-        uses: dorny/test-reporter@v2.2.0
+      # 🚨 보고서 생성 2: Frontend JUnit Report (직접 게시)
+      - name: Publish Frontend Unit Test Results
+        uses: dorny/test-reporter@v1
         if: always()
         with:
-          name: Frontend Test Reports
-          path: './test-results.xml'
+          name: Frontend Unit Tests
+          path: test-results.xml # working-directory (./frontend) 기준
           reporter: jest-junit
           token: ${{ secrets.GITHUB_TOKEN }}
