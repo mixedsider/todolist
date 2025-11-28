@@ -122,7 +122,7 @@ jobs:
         uses: madrapps/jacoco-report@v1.6.1
         with:
           # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
-          paths: ./report_data/backend/backend-jacoco-report/jacocoTestReport.xml
+          paths: './report_data/backend/backend-jacoco-report/jacocoTestReport.xml'
           title: 'Backend Code Coverage'
           min-coverage-overall: '40'
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -133,6 +133,6 @@ jobs:
         with:
           name: Frontend Test Results
           # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
-          path: '**/test-results.xml'
+          path: './report_data/frontend/frontend-test-results/test-results.xml'
           reporter: jest-junit
           token: ${{ secrets.GITHUB_TOKEN }}
