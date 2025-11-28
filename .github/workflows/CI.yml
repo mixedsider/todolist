@@ -17,27 +17,33 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./backend # 👈 run 명령어가 이 안에서 실행됨 (예: ./gradlew test)
+        working-directory: ./backend
 
     steps:
       - uses: actions/checkout@v4
-      # ... (Set up Java, Code Style, Run Tests) ...
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
       - name: Gradlew chmod +x
         run: chmod +x ./gradlew
 
-      # 테스트 실행 (이 단계에서 build/reports/jacoco/jacocoTestReport.xml 파일이 생성됨)
-      - name: Run Backend Tests and Generate Jacoco Report
-        run: ./gradlew clean test jacocoTestReport
+      - name: Run Backend Tests
+        # 테스트를 실행하여 JUnit XML 리포트 생성 (Jacoco는 커버리지이므로 제외하고 JUnit 리포트만 사용)
+        run: ./gradlew clean test
 
-      # 🚨 수정 1: Jacoco Report 업로드 경로 (Artifacts는 루트 기준)
-      - name: Publish Unit Test Results
+      # 🚨 보고서 생성 1: Backend JUnit Report (직접 게시)
+      - name: Publish Backend Unit Test Results
         uses: dorny/test-reporter@v1
-        if: always()  # 테스트가 실패하여도 Report를 보기 위해 `always`로 설정
+        if: always() # 테스트가 실패해도 리포트(주석)를 남기기 위해
         with:
-          name: Maven Tests
-          path: backend/build/**/*.xml
-          reporter: java-junit
-          fail-on-error: true
+          name: Backend Unit Tests
+          # Gradle은 build/test-results/test/ 폴더에 XML 파일을 생성합니다.
+          path: build/test-results/test/*.xml
+          reporter: junit # 표준 Gradle JUnit XML 파서 사용
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   # -----------------------------------------------------------------
   # JOB 2: Frontend (React) 테스트
@@ -63,75 +69,11 @@ jobs:
         # Vitest 결과를 JUnit XML 포맷으로 출력 (--reporter=junit --outputFile=...)
         run: npm test -- --reporter=junit --outputFile=./test-results.xml
 
-      - name: Upload Frontend Test Results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: frontend-test-results
-          path: frontend/test-results.xml
-
-      - name: Build Frontend (For Deployment)
-        run: npm run build
-        working-directory: ./frontend
-
-      - name: Upload Frontend Deployment Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deploy-frontend-dist
-          path: frontend/dist/
-          retention-days: 7
-
-  # -----------------------------------------------------------------
-  # JOB 3: 결과 분석 및 PR 댓글 작성
-  # -----------------------------------------------------------------
-  report:
-    needs: [ backend-test, frontend-test ]
-    runs-on: ubuntu-latest
-    if: always()
-
-    steps:
-#      - uses: actions/checkout@v4
-#      # 1. Download Backend Jacoco Report
-#      - name: Download Backend Jacoco Report
-#        uses: actions/download-artifact@v4
-#        with:
-#          name: backend-jacoco-report
-#          path: ./report_data/backend # 다운로드 위치 지정
-
-      # 2. Download Frontend JUnit Report (경로 수정을 위해 다운로드 위치 지정)
-      - name: Download Frontend JUnit Report
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-test-results
-          path: ./report_data/frontend # 다운로드 위치 지정
-
-#      # 3. Publish Backend Coverage Report (Jacoco)
-#      - name: Publish Backend Coverage Report (Jacoco)
-#        uses: madrapps/jacoco-report@v1.6.1
-#        with:
-#          # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
-#          paths: './report_data/backend/backend-jacoco-report/*.xml'
-#          title: 'Backend Code Coverage'
-#          min-coverage-overall: '40'
-#          token: ${{ secrets.GITHUB_TOKEN }}
-#      - name: Publish Backend Test Results (JUnit)
-#        uses: dorny/test-reporter@v2.2.0
-#        if: always()
-#        with:
-#          name: Backend Test Results
-#          # Backend JUnit XML 파일 경로 (Gradle은 여러 XML을 생성하므로 와일드카드 사용)
-#          path: './report_data/backend/**/jacocoTestReport.xml'
-#          reporter: java-junit
-#          token: ${{ secrets.GITHUB_TOKEN }}
-#          fail-on-error: true
-
-      # 4. Publish Frontend Test Results (JUnit)
-      - name: Publish Frontend Test Results (JUnit)
+      - name: Publish Frontend Test Results
         uses: dorny/test-reporter@v2.2.0
         if: always()
         with:
           name: Frontend Test Reports
-          # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
-          path: './report_data/frontend/**/test-results.xml'
+          path: './test-results.xml'
           reporter: jest-junit
           token: ${{ secrets.GITHUB_TOKEN }}
