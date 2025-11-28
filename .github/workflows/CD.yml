@@ -160,3 +160,4 @@ jobs:
               > ${DEPLOY_PATH}/app.log 2>&1 &
             
             echo "Deployment and restart complete."
+            exit 0
