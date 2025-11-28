@@ -91,40 +91,36 @@ jobs:
     if: always()
 
     steps:
-      # ... (Download Frontend JUnit Report) ...
-
-      # 1. Download Backend Jacoco Report (path: ./report_data/backend)
+      # 1. Download Backend Jacoco Report
       - name: Download Backend Jacoco Report
         uses: actions/download-artifact@v4
-        id: download-backend-jacoco # ID를 부여하여 다음 단계에서 경로를 참조
         with:
           name: backend-jacoco-report
-          path: ./report_data/backend # 👈 다운로드 위치
+          path: ./report_data/backend # 다운로드 위치 지정
 
-      # 2. Publish Backend Coverage Report (Jacoco)
+      # 2. Download Frontend JUnit Report (경로 수정을 위해 다운로드 위치 지정)
+      - name: Download Frontend JUnit Report
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-test-results
+          path: ./report_data/frontend # 다운로드 위치 지정
+
+      # 3. Publish Backend Coverage Report (Jacoco)
       - name: Publish Backend Coverage Report (Jacoco)
         uses: madrapps/jacoco-report@v1.6.1
         with:
-          # 🚨 수정: 다운로드 위치 아래에 파일이 있음 🚨
-          # 다운로드 경로 (./report_data/backend) + Artifact 이름 폴더 + 파일명
+          # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
           paths: ./report_data/backend/backend-jacoco-report/jacocoTestReport.xml
           title: 'Backend Code Coverage'
           min-coverage-overall: '40'
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 3. Download Frontend JUnit Report
-      - name: Download Frontend JUnit Report
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-test-results
-          path: ./report_data/frontend # 👈 다운로드 위치
-
       # 4. Publish Frontend Test Results (JUnit)
       - name: Publish Frontend Test Results (JUnit)
         uses: dorny/test-reporter@v1
         with:
-          # 🚨 수정: 다운로드 위치 아래에 파일이 있음 🚨
+          name: Frontend Test Results
+          # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
           path: 'report_data/frontend/frontend-test-results/test-results.xml'
           reporter: junit
           token: ${{ secrets.GITHUB_TOKEN }}
-          name: 'Frontend Code Coverage'
