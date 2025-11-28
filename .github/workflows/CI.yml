@@ -1,0 +1,115 @@
+name: CI - Test & Report
+
+on:
+  pull_request:
+    branches: [ "main", "develop" ] # PR이 생성되거나 업데이트될 때 실행
+
+permissions:
+  contents: read
+  pull-requests: write # PR에 댓글을 달기 위한 권한
+  checks: write
+
+jobs:
+  # -----------------------------------------------------------------
+  # JOB 1: Backend (Spring Boot) 테스트
+  # -----------------------------------------------------------------
+  backend-test:
+    # ... (생략: uses: actions/checkout@v4, setup-java, chmod +x gradlew) ...
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run Backend Tests and Generate Jacoco Report
+        # gradlew test를 실행하면 build.gradle 설정에 따라 jacocoTestReport도 실행됨
+        run: ./gradlew clean test jacocoTestReport
+
+      - name: Upload Jacoco Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jacoco-report
+          path: backend/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+
+  # -----------------------------------------------------------------
+  # JOB 2: Frontend (React) 테스트
+  # -----------------------------------------------------------------
+  frontend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Frontend Tests
+        # Vitest 결과를 JUnit XML 포맷으로 출력 (--reporter=junit --outputFile=...)
+        run: npm test -- --reporter=junit --outputFile=./test-results.xml
+
+      - name: Upload Frontend Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-test-results
+          path: frontend/test-results.xml
+
+  # -----------------------------------------------------------------
+  # JOB 3: 결과 분석 및 PR 댓글 작성
+  # -----------------------------------------------------------------
+  report:
+    needs: [ backend-test, frontend-test ]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Download Backend Jacoco Report
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jacoco-report
+          path: ./report_data/backend
+
+      - name: Download Frontend JUnit Report
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-test-results
+          path: ./report_data/frontend
+
+      # ✨ [NEW] Action 1: Jacoco 리포트 분석 및 PR에 게시
+      - name: Publish Backend Coverage Report (Jacoco)
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: ${{ steps.download-backend-report.outputs.download-path }}/jacocoTestReport.xml
+          # Jacoco Action이 PR에 코멘트를 달아줍니다.
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          title: 'Backend Code Coverage'
+          # 최소 커버리지 기준 설정 (옵션)
+          minimum_coverage_overall: 0
+
+      # ✨ [NEW] Action 2: Frontend JUnit 리포트 분석 및 PR에 게시
+      - name: Publish Frontend Test Results (JUnit)
+        # 이 Action은 테스트 결과를 시각적으로 보여주고, 실패 시 주석을 달아줍니다.
+        uses: dorny/test-reporter@v1
+        with:
+          name: Frontend Test Results
+          path: 'report_data/frontend/test-results.xml'
+          reporter: junit
+          token: ${{ secrets.GITHUB_TOKEN }}
