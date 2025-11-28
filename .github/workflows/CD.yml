@@ -116,7 +116,7 @@ jobs:
           # 기존 스크립트 그대로 사용
           script: |
             # 1. 환경 변수 정의
-            DB_URL="${{ vars.DB_URL }}"
+            DB_URL="${{ secrets.DB_URL }}"
             DB_USER="${{ vars.DB_USERNAME }}"
             DB_PASS="${{ vars.DB_PASSWORD }}"
             DB_PORT="${{ vars.DB_PORT }}"
@@ -124,6 +124,9 @@ jobs:
 
             DEPLOY_PATH="~/backend"
             JAR_NAME="backend.jar"
+            
+            echo $DB_URL
+            echo $DATABASE
 
             # 기존 프로세스 종료
             CURRENT_PID=$(ps -ef | grep java | grep "${JAR_NAME}" | awk '{print $2}')
