@@ -45,6 +45,7 @@ jobs:
         working-directory: ./backend
         run: |
           SRC_JAR=$(ls -t build/libs/*.jar | head -n 1)
+          echo $SRC_JAR
           cp "$SRC_JAR" "build/libs/backend-${{ github.sha }}.jar"
           rm -r "$SRC_JAR"
 
