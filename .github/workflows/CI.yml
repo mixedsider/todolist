@@ -134,5 +134,5 @@ jobs:
           name: Frontend Test Results
           # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
           path: 'report_data/frontend/frontend-test-results/test-results.xml'
-          reporter: junit
+          reporter: jest-junit
           token: ${{ secrets.GITHUB_TOKEN }}
