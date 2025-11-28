@@ -117,9 +117,9 @@ jobs:
           script: |
             # 1. 환경 변수 정의
             DB_URL="${{ secrets.DB_URL }}"
-            DB_USER="${{ vars.DB_USERNAME }}"
-            DB_PASS="${{ vars.DB_PASSWORD }}"
-            DB_PORT="${{ vars.DB_PORT }}"
+            DB_USER="${{ secrets.DB_USERNAME }}"
+            DB_PASS="${{ secrets.DB_PASSWORD }}"
+            DB_PORT="${{ secrets.DB_PORT }}"
             DATABASE="${{vars.DATABASE}}"
 
             DEPLOY_PATH="~/backend"
