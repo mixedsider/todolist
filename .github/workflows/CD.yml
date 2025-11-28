@@ -3,7 +3,7 @@ name: CD - Deploy to Remote Server (Dependent on CI)
 on:
   workflow_run:
     # 1. CI 워크플로우의 이름으로 설정 (ci.yml 파일의 name 필드와 일치해야 함)
-    workflows: ["CI - Test & Coverage Report"]
+    workflows: ["CI - Test & Report"]
     # 2. CI 워크플로우가 완료(completed)되었을 때만 트리거
     types: [completed]
     # 3. main 브랜치에 대해서만 배포
