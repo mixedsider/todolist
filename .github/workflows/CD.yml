@@ -1,84 +1,186 @@
-# ----------------------------------------------------------
-# 4-3. Target Server에서 서비스 재시작
-# ----------------------------------------------------------
-- name: Stop, Rename, and Restart Backend Application (via Bastion)
-  uses: appleboy/ssh-action@v1.0.3
-  with:
-    host: ${{ secrets.DEPLOY_HOST }}
-    username: ${{ secrets.DEPLOY_USER }}
-    key: ${{ secrets.SSH_PRIVATE_KEY }}
-    port: 22 # Target Server SSH 포트 (기본 22)
+name: CD - Build and Deploy
 
-    proxy_host: ${{ secrets.BASTION_HOST }}
-    proxy_username: ${{ secrets.BASTION_USER }}
-    proxy_port: ${{ secrets.BASTION_HOST_PORT }}
-    proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+on:
+  # main 브랜치에 코드가 푸시된 PR에서만 실행
+  pull_request:
+    branches: [ main ]
 
-    script: |
-      # 1. 환경 변수 설정
-      DB_URL="${{ secrets.DB_URL }}"
-      DB_USER="${{ secrets.DB_USERNAME }}"
-      DB_PASS="${{ secrets.DB_PASSWORD }}"
-      DEPLOY_USER="${{ secrets.DEPLOY_USER }}"
-      
-      # 배포 디렉터리 (사용자 환경에 맞게 수정 필요)
-      DEPLOY_PATH="/home/${DEPLOY_USER}/backend"
-      
-      # 💡 [수정 포인트 1] GitHub Context 문법(${{ }})을 사용하여 해시 값을 직접 주입
-      TARGET_JAR_NAME="backend-${{ github.sha }}.jar"
-      FINAL_JAR_PATH="${DEPLOY_PATH}/${TARGET_JAR_NAME}"
-      
-      echo "Deployment started..."
-      echo "Target Jar: $FINAL_JAR_PATH"
-      
-      # 2. 배포 디렉터리로 이동 및 최신 업로드 파일 확인
-      cd "$DEPLOY_PATH" || { echo "Deploy path not found"; exit 1; }
-      
-      # scp로 올라온 파일 중 가장 최신 .jar 찾기 (방금 올린 파일)
-      # 'ls -t'는 시간순 정렬, 'head -n 1'은 가장 상위 1개
-      NEW_JAR=$(ls -t *.jar | head -n 1)
-      
-      if [ -z "$NEW_JAR" ]; then
-        echo "❌ Error: No JAR file found in $DEPLOY_PATH"
-        exit 1
-      fi
-      
-      echo "Found new JAR: $NEW_JAR"
-      
-      # 3. 파일명 변경 (backend-0.0.1.jar -> backend-{hash}.jar)
-      # 파일이 다를 경우에만 복사/이동
-      if [ "$NEW_JAR" != "$TARGET_JAR_NAME" ]; then
-        cp "$NEW_JAR" "$TARGET_JAR_NAME"
-        echo "Copied $NEW_JAR to $TARGET_JAR_NAME"
-      fi
-      
-      # 4. 기존 프로세스 종료
-      CURRENT_PID=$(ps -ef | grep java | grep "$DEPLOY_PATH" | grep -v grep | awk '{print $2}')
-      
-      if [ -n "$CURRENT_PID" ]; then
-        echo "Stopping old process with PID: $CURRENT_PID"
-        kill -9 "$CURRENT_PID"
-        sleep 5
-      else
-        echo "No active Java process found."
-      fi
-      
-      # 5. 새 JAR 실행
-      if [ ! -f "$FINAL_JAR_PATH" ]; then
-        echo "❌ Error: Target JAR file ($FINAL_JAR_PATH) not found!"
-        exit 1
-      fi
-      
-      echo "Starting application..."
-      chmod 744 "$FINAL_JAR_PATH"
-      
-      # 💡 [수정 포인트 2] 실행 시 절대 경로 사용 및 nohup 처리
-      nohup java \
-        -Dspring.datasource.url="$DB_URL" \
-        -Dspring.datasource.username="$DB_USER" \
-        -Dspring.datasource.password="$DB_PASS" \
-        -jar "$FINAL_JAR_PATH" \
-        > "$DEPLOY_PATH/app.log" 2>&1 &
-      
-      echo "Deployment command executed. Log path: $DEPLOY_PATH/app.log"
-      exit 0
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: DEPLOY
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # ===========================
+      # 2. Backend (Spring Boot)
+      # ===========================
+      - name: Cache Gradle Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend/build.gradle*', 'backend/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Grant Execute Permission for gradlew
+        working-directory: ./backend
+        run: chmod +x ./gradlew
+
+      - name: Build Backend JAR
+        working-directory: ./backend
+        run: ./gradlew bootJar
+
+      # ===========================
+      # 3. Frontend (Node)
+      # ===========================
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build Frontend DIST
+        working-directory: ./frontend
+        run: npm run build
+
+      # ===========================
+      # 4. Deploy
+      # ===========================
+      - name: Set up SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # 4-1. Frontend dist 전송 (target은 "디렉터리" 여야 함)
+      - name: Transfer Frontend DIST to Bastion/Frontend Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.BASTION_HOST }}
+          username: ${{ secrets.BASTION_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.BASTION_HOST_PORT }}
+          # dist 안의 파일들을 전송하고 싶다면 보통 이렇게 씁니다.
+          source: "frontend/dist/"
+          target: "~/frontend"   # ← 디렉터리만 허용
+
+      # 4-2. Backend JAR 전송 (proxy 사용)
+      - name: Transfer Backend JAR to Target Server (via Bastion)
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+
+          # JAR가 만들어지는 실제 경로 확인 필요 (예: backend-0.0.1-SNAPSHOT.jar 등)
+          source: "backend/build/libs/*.jar"
+
+          # target은 디렉터리여야 하므로, 파일명까지 쓰지 말고 디렉터리만 지정
+          target: "~/backend"
+
+          proxy_host: ${{ secrets.BASTION_HOST }}
+          proxy_username: ${{ secrets.BASTION_USER }}
+          proxy_port: ${{ secrets.BASTION_HOST_PORT }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+          # ----------------------------------------------------------
+      # 4-3. Target Server에서 서비스 재시작
+      # ----------------------------------------------------------
+      - name: Stop, Rename, and Restart Backend Application (via Bastion)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22 # Target Server SSH 포트 (기본 22)
+
+          proxy_host: ${{ secrets.BASTION_HOST }}
+          proxy_username: ${{ secrets.BASTION_USER }}
+          proxy_port: ${{ secrets.BASTION_HOST_PORT }}
+          proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+          script: |
+            # 1. 환경 변수 설정
+            DB_URL="${{ secrets.DB_URL }}"
+            DB_USER="${{ secrets.DB_USERNAME }}"
+            DB_PASS="${{ secrets.DB_PASSWORD }}"
+            DEPLOY_USER="${{ secrets.DEPLOY_USER }}"
+            
+            # 배포 디렉터리 (사용자 환경에 맞게 수정 필요)
+            DEPLOY_PATH="/home/${DEPLOY_USER}/backend"
+            
+            # 💡 [수정 포인트 1] GitHub Context 문법(${{ }})을 사용하여 해시 값을 직접 주입
+            TARGET_JAR_NAME="backend-${{ github.sha }}.jar"
+            FINAL_JAR_PATH="${DEPLOY_PATH}/${TARGET_JAR_NAME}"
+
+            echo "Deployment started..."
+            echo "Target Jar: $FINAL_JAR_PATH"
+
+            # 2. 배포 디렉터리로 이동 및 최신 업로드 파일 확인
+            cd "$DEPLOY_PATH" || { echo "Deploy path not found"; exit 1; }
+
+            # scp로 올라온 파일 중 가장 최신 .jar 찾기 (방금 올린 파일)
+            # 'ls -t'는 시간순 정렬, 'head -n 1'은 가장 상위 1개
+            NEW_JAR=$(ls -t *.jar | head -n 1)
+
+            if [ -z "$NEW_JAR" ]; then
+              echo "❌ Error: No JAR file found in $DEPLOY_PATH"
+              exit 1
+            fi
+            
+            echo "Found new JAR: $NEW_JAR"
+
+            # 3. 파일명 변경 (backend-0.0.1.jar -> backend-{hash}.jar)
+            # 파일이 다를 경우에만 복사/이동
+            if [ "$NEW_JAR" != "$TARGET_JAR_NAME" ]; then
+              cp "$NEW_JAR" "$TARGET_JAR_NAME"
+              echo "Copied $NEW_JAR to $TARGET_JAR_NAME"
+            fi
+
+            # 4. 기존 프로세스 종료
+            CURRENT_PID=$(ps -ef | grep java | grep "$DEPLOY_PATH" | grep -v grep | awk '{print $2}')
+
+            if [ -n "$CURRENT_PID" ]; then
+              echo "Stopping old process with PID: $CURRENT_PID"
+              kill -9 "$CURRENT_PID"
+              sleep 5
+            else
+              echo "No active Java process found."
+            fi
+
+            # 5. 새 JAR 실행
+            if [ ! -f "$FINAL_JAR_PATH" ]; then
+              echo "❌ Error: Target JAR file ($FINAL_JAR_PATH) not found!"
+              exit 1
+            fi
+
+            echo "Starting application..."
+            chmod 744 "$FINAL_JAR_PATH"
+
+            # 💡 [수정 포인트 2] 실행 시 절대 경로 사용 및 nohup 처리
+            nohup java \
+              -Dspring.datasource.url="$DB_URL" \
+              -Dspring.datasource.username="$DB_USER" \
+              -Dspring.datasource.password="$DB_PASS" \
+              -jar "$FINAL_JAR_PATH" \
+              > "$DEPLOY_PATH/app.log" 2>&1 &
+
+            echo "Deployment command executed. Log path: $DEPLOY_PATH/app.log"
+            exit 0
+
