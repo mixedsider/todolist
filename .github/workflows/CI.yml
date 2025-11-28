@@ -10,9 +10,9 @@ permissions:
   checks: write
 
 jobs:
-  # -----------------------------------------------------------------
-  # JOB 1: Backend (Spring Boot) 테스트
-  # -----------------------------------------------------------------
+  # ----------------------------------------------------------
+  # JOB 1: Backend (Spring Boot)
+  # ----------------------------------------------------------
   backend-test:
     runs-on: ubuntu-latest
     defaults:
@@ -29,7 +29,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Gradlew chmod +x
-        run: chmod +x gradlew
+        run: chmod +x ./gradlew
 
       - name: Code Style Apply
         run: ./gradlew spotlessApply
@@ -37,16 +37,18 @@ jobs:
       - name: Run Backend Tests and Generate Jacoco Report
         run: ./gradlew clean test jacocoTestReport
 
-      # Jacoco Report 업로드
+      - name: Build JAR (Deployment)
+        run: ./gradlew bootJar
+
+      # ⭐ Jacoco Report Upload (정확한 경로)
       - name: Upload Jacoco Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-jacoco-report
           path: build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
-          retention-days: 7
 
-      # Backend JAR 업로드
+      # ⭐ Backend JAR Upload (정확한 경로)
       - name: Upload Backend Deployment Artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -55,9 +57,9 @@ jobs:
           path: build/libs/*.jar
           retention-days: 7
 
-  # -----------------------------------------------------------------
-  # JOB 2: Frontend (React) 테스트
-  # -----------------------------------------------------------------
+  # ----------------------------------------------------------
+  # JOB 2: Frontend (React / Vite)
+  # ----------------------------------------------------------
   frontend-test:
     runs-on: ubuntu-latest
     defaults:
@@ -76,25 +78,20 @@ jobs:
         run: npm ci
 
       - name: Run Frontend Tests
-        run: |
-          npm test -- --reporter=junit --outputFile=test-results.xml --watchAll=false
-          ls -la test-results.xml || echo "test-results.xml not found"
+        run: npm test -- --reporter=junit --outputFile=test-results.xml
 
-      # 프론트엔드 테스트 결과 업로드
+      # ⭐ Frontend Test Result Upload
       - name: Upload Frontend Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: frontend-test-results
           path: test-results.xml
-          retention-days: 7
 
-      - name: Build Frontend
-        run: |
-          npm run build
-          ls -la dist/ || echo "dist/ not found"
+      - name: Build Frontend (Deployment)
+        run: npm run build
 
-      # 프론트엔드 dist 업로드
+      # ⭐ Frontend DIST Upload
       - name: Upload Frontend Deployment Artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -103,9 +100,9 @@ jobs:
           path: dist/**
           retention-days: 7
 
-  # -----------------------------------------------------------------
-  # JOB 3: 결과 분석 및 PR 댓글 작성
-  # -----------------------------------------------------------------
+  # ----------------------------------------------------------
+  # JOB 3: Report (Jacoco + JUnit + PR Comment)
+  # ----------------------------------------------------------
   report:
     needs: [ backend-test, frontend-test ]
     runs-on: ubuntu-latest
@@ -113,41 +110,40 @@ jobs:
 
     steps:
       - name: Download Backend Jacoco Report
-        if: always()
         uses: actions/download-artifact@v4
         with:
           name: backend-jacoco-report
-          path: backend-jacoco
+          path: ./report_data/backend
 
       - name: Download Frontend JUnit Report
-        if: always()
         uses: actions/download-artifact@v4
         with:
           name: frontend-test-results
-          path: frontend-junit
+          path: ./report_data/frontend
 
+      # ⭐ Jacoco 리포트 게시 (정확한 경로)
       - name: Publish Backend Coverage Report (Jacoco)
-        if: always()
         uses: madrapps/jacoco-report@v1.6.1
         with:
-          paths: backend-jacoco/jacocoTestReport.xml
+          paths: report_data/backend/jacocoTestReport.xml
           title: 'Backend Code Coverage'
           min-coverage-overall: '40'
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # ⭐ Frontend Test Report 게시 (JUnit)
       - name: Publish Frontend Test Results (JUnit)
-        if: always()
         uses: dorny/test-reporter@v1
         with:
           name: Frontend Test Results
-          path: frontend-junit/test-results.xml
+          path: report_data/frontend/test-results.xml
           reporter: junit
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # 디버깅용
       - name: Debug - List Downloaded Files
         if: always()
         run: |
           echo "=== Backend Jacoco Files ==="
-          find backend-jacoco -type f || echo "No backend files"
+          find report_data/backend -type f
           echo "=== Frontend JUnit Files ==="
-          find frontend-junit -type f || echo "No frontend files"
+          find report_data/frontend -type f
