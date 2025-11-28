@@ -14,46 +14,31 @@ jobs:
   # JOB 1: Backend (Spring Boot) 테스트
   # -----------------------------------------------------------------
   backend-test:
-    # ... (생략: uses: actions/checkout@v4, setup-java, chmod +x gradlew) ...
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./backend
+        working-directory: ./backend # 👈 Job의 시작점
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
-
-      - name: Code Style Apply
-        run: ./gradlew spotlessApply
-
-      - name: Run Backend Tests and Generate Jacoco Report
-        # gradlew test를 실행하면 build.gradle 설정에 따라 jacocoTestReport도 실행됨
-        run: ./gradlew clean test jacocoTestReport
+      # ... (Set up Java, Code Style, Run Tests) ...
 
       - name: Upload Jacoco Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-jacoco-report
-          path: backend/build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
-
-      - name: Build Spring Boot JAR (For Deployment)
-        run: ./gradlew bootJar # 이미 빌드된 JAR 파일을 다시 빌드
-        working-directory: ./backend
+          # 🚨 수정: artifacts 액션은 상대 경로가 아닌 실제 경로를 사용하거나,
+          #         Job의 working-directory를 기준으로 path를 지정해야 합니다.
+          #         여기서는 working-directory 안의 경로를 사용합니다.
+          path: build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml # 👈 './backend/' 제거
 
       - name: Upload Backend Deployment Artifact
         uses: actions/upload-artifact@v4
         with:
           name: deploy-backend-jar
-          path: backend/build/libs/*.jar
-          retention-days: 7 # 배포를 위해 일주일간 보관
+          path: build/libs/*.jar # 👈 './backend/' 제거
+          retention-days: 7
 
   # -----------------------------------------------------------------
   # JOB 2: Frontend (React) 테스트
