@@ -130,7 +130,7 @@ jobs:
           # source: "backend/build/libs/*.jar"
 
           target: "~/backend"
-          # strip_components: 2  # 만약 디렉터리 구조가 복사되면 이걸 추가
+          strip_components: 3  # 만약 디렉터리 구조가 복사되면 이걸 추가
 
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ${{ secrets.BASTION_USER }}
