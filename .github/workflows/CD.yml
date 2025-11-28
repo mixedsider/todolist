@@ -1,8 +1,8 @@
-name: CD - Build and Deploy to Remote Server
+name: CD - Build and Deploy to Remote Server (Monorepo)
 
 # main 브랜치에 코드가 푸시될 때 워크플로우 실행
 on:
-  pull_request:
+  push:
     branches: [main]
 
 jobs:
@@ -15,48 +15,56 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Gradle 빌드 속도 향상을 위한 캐시 설정 (backend 폴더를 기준으로 캐시)
+      # ==========================================================
+      # 2. 백엔드(Java/Spring Boot) 빌드 설정 (Working Directory: backend)
+      # ==========================================================
+
+      # Gradle 빌드 속도 향상을 위한 캐시 설정
       - name: Cache Gradle Dependencies
         uses: actions/cache@v4
         with:
           path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/build.gradle*', '**/gradle-wrapper.properties') }}
+          key: ${{ runner.os }}-gradle-${{ hashFiles('backend/build.gradle*', 'backend/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # Java 17 설정 (사용하시는 버전에 맞게 수정하세요)
-      - name: Set up JDK 21
+      # Java 17 설정 (버전 확인 필요)
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
 
-      # 권한 설정 (Gradle Wrapper 실행 권한 부여)
+      # 권한 설정 (backend 디렉토리 내의 gradlew 실행 권한 부여)
       - name: Grant Execute Permission for gradlew
-        run: chmod +x ./gradlew
+        run: chmod +x ./backend/gradlew
 
-      # 백엔드 빌드 (JAR 파일 생성). 빌드 결과는 일반적으로 'build/libs/'에 생성됩니다.
+      # 백엔드 빌드 (JAR 파일 생성)
       - name: Build Backend JAR
+        working-directory: ./backend # 🚨 작업 디렉토리를 backend로 설정
         run: ./gradlew bootJar
 
       # ==========================================================
-      # 3. 프론트엔드(Node.js) 빌드 설정
+      # 3. 프론트엔드(Node.js) 빌드 설정 (Working Directory: frontend)
       # ==========================================================
 
-      # Node.js 20 설정 (사용하시는 버전에 맞게 수정하세요)
+      # Node.js 20 설정 (버전 확인 필요)
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm' # npm 캐시 사용
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json # frontend의 lock 파일 참조
 
       # 의존성 설치
       - name: Install Frontend Dependencies
+        working-directory: ./frontend # 🚨 작업 디렉토리를 frontend로 설정
         run: npm install
 
-      # 프론트엔드 빌드 (정적 파일 생성). 빌드 결과는 일반적으로 'dist/' 또는 'build/'에 생성됩니다.
+      # 프론트엔드 빌드 (정적 파일 생성)
       - name: Build Frontend DIST
-        run: npm run build # package.json에 정의된 build 스크립트를 실행
+        working-directory: ./frontend # 🚨 작업 디렉토리를 frontend로 설정
+        run: npm run build # package.json에 정의된 build 스크립트 실행
 
       # ==========================================================
       # 4. 배포 (SSH 연결 및 파일 전송)
@@ -68,30 +76,31 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      # 백엔드 JAR 파일 서버로 전송 (빌드 경로를 'build/libs/*.jar'로 가정)
+      # 백엔드 JAR 파일 서버로 전송
       - name: Transfer Backend JAR to Server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # 빌드된 JAR 파일의 경로를 정확히 지정해야 합니다.
-          source: "build/libs/*.jar"
+          # 🚨 전체 경로 지정: todolist/backend/build/libs/*.jar
+          source: "backend/build/libs/*.jar"
           target: "~/backend"
-          # JAR 파일이 포함된 디렉토리(libs)를 제외하고, JAR 파일 자체만 전송합니다.
-          strip_components: 2 # build/libs/ 를 제외하기 위해 2로 설정
+          # 'backend/build/libs/' 경로를 벗겨내기 위해 3으로 설정
+          strip_components: 3
 
-      # 프론트엔드 DIST 파일 서버로 전송 (빌드 경로를 'dist/*'로 가정)
+      # 프론트엔드 DIST 파일 서버로 전송
       - name: Transfer Frontend DIST to Server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          # 빌드된 정적 파일의 경로를 정확히 지정해야 합니다.
-          source: "dist/*"
+          # 🚨 전체 경로 지정: todolist/frontend/dist/*
+          source: "frontend/dist/*"
           target: "~/frontend"
-          strip_components: 1 # dist/ 를 제외하기 위해 1로 설정
+          # 'frontend/dist/' 경로를 벗겨내기 위해 2로 설정 (dist가 바로 빌드 결과 폴더일 경우)
+          strip_components: 2
 
       # 원격 서버에서 서비스 재시작 및 환경 변수 설정
       - name: Stop, Rename, and Restart Application
@@ -101,34 +110,38 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
 
-          # 🚨 기존에 사용하시던 재시작 스크립트를 그대로 사용합니다. 🚨
+          # 기존 스크립트 그대로 사용
           script: |
-            # 1. 환경 변수 정의 (기존 설정 유지)
+            # 1. 환경 변수 정의
             DB_URL="${{ vars.DB_URL }}"
             DB_USER="${{ secrets.DB_USERNAME }}"
             DB_PASS="${{ secrets.DB_PASSWORD }}"
             DB_PORT="${{ vars.DB_PORT }}"
 
             DEPLOY_PATH="/home/${{ secrets.DEPLOY_USER }}/backend"
-            JAR_NAME="backend.jar" # 배포 경로에 있는 JAR 파일 이름
+            JAR_NAME="backend.jar"
 
-            # (중략: 기존 프로세스 종료 및 파일 교체 로직)
+            # 기존 프로세스 종료
             CURRENT_PID=$(ps -ef | grep java | grep "${JAR_NAME}" | awk '{print $2}')
             if [ -n "$CURRENT_PID" ]; then
               echo "Stopping process with PID: $CURRENT_PID"; kill -9 $CURRENT_PID; sleep 5;
             fi
 
             # ----------------------------------------------------
-            # 2. 애플리케이션 재실행 시 환경 변수/시스템 속성 전달
+            # 2. 새로운 JAR 파일 교체 및 재실행
             # ----------------------------------------------------
 
-            # JAR 파일의 이름을 임시로 변경하고, 새로 받은 JAR 파일을 JAR_NAME으로 복사
-            LATEST_JAR=$(ls -t ${DEPLOY_PATH}/*.jar | head -n 1)
-            if [ -f "$LATEST_JAR" ] && [ "$LATEST_JAR" != "${DEPLOY_PATH}/${JAR_NAME}" ]; then
-              echo "Moving new JAR: $LATEST_JAR to ${DEPLOY_PATH}/${JAR_NAME}"
-              mv $LATEST_JAR ${DEPLOY_PATH}/${JAR_NAME}
-            fi
+            # 새로 전송된 JAR 파일 찾기 (가장 최신 파일)
+            LATEST_JAR=$(ls -t ${DEPLOY_PATH}/*.jar | grep -v "${JAR_NAME}" | head -n 1)
             
+            # 기존 JAR 삭제 및 새로운 JAR로 교체
+            if [ -f "$LATEST_JAR" ]; then
+              echo "Found new JAR: $LATEST_JAR"
+              rm -f ${DEPLOY_PATH}/${JAR_NAME} # 기존 JAR 삭제
+              mv $LATEST_JAR ${DEPLOY_PATH}/${JAR_NAME} # 새 JAR로 교체
+              echo "New application file deployed: ${DEPLOY_PATH}/${JAR_NAME}"
+            fi
+
             # -D 시스템 속성 전달 방식으로 Spring Boot 애플리케이션 실행
             echo "Starting application with properties..."
             nohup java -jar \
