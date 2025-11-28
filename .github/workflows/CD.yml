@@ -73,12 +73,12 @@ jobs:
       - name: Transfer Frontend DIST to Server
         uses: appleboy/scp-action@v0.1.7
         with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "artifacts/frontend/dist/*"
-        target: "~/frontend"
-        strip_components: 2
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "artifacts/frontend/dist/*"
+          target: "~/frontend"
+          strip_components: 2
 
       - name: Stop, Rename, and Restart Application
         uses: appleboy/ssh-action@v1.0.3
