@@ -2,11 +2,11 @@ name: CI - Test & Report
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main" ] # PR이 생성되거나 업데이트될 때 실행
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: write # PR에 댓글을 달기 위한 권한
   checks: write
 
 jobs:
@@ -17,40 +17,38 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./backend # 👈 Gradle 명령의 실행 위치 고정
+        working-directory: ./backend # 👈 run 명령어가 이 안에서 실행됨 (예: ./gradlew test)
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
+      # ... (Set up Java, Code Style, Run Tests) ...
       - name: Gradlew chmod +x
         run: chmod +x ./gradlew
 
-      # 빌드/테스트 실행
-      - name: Build Spring Boot JAR
+      - name: Build Spring Boot JAR (For Deployment)
         run: ./gradlew bootJar
+
+
+      # 테스트 실행 (이 단계에서 build/reports/jacoco/jacocoTestReport.xml 파일이 생성됨)
       - name: Run Backend Tests and Generate Jacoco Report
         run: ./gradlew clean test jacocoTestReport
 
-      # 🚨 Upload 1: Jacoco Report 업로드 (working-directory 기준)
+      # 🚨 수정 1: Jacoco Report 업로드 경로 (Artifacts는 루트 기준)
       - name: Upload Jacoco Report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: backend-jacoco-report
-          # working-directory: ./backend 안에서 생성된 파일을 바로 참조
-          path: build/reports/jacoco/jacocoTestReport/jacocoTestReport.xml
+          # Workspace Root (CI 루트)에서부터 backend 폴더를 명시
+          path: backend/build/reports/jacoco/test/jacocoTestReport.xml
 
-      # 🚨 Upload 2: Deployment JAR 업로드 (working-directory 기준)
+      # 🚨 수정 2: Deployment JAR 업로드 경로
       - name: Upload Backend Deployment Artifact
         uses: actions/upload-artifact@v4
         with:
           name: deploy-backend-jar
-          path: build/libs/*.jar
+          # Workspace Root (CI 루트)에서부터 backend 폴더를 명시
+          path: backend/build/libs/*.jar
           retention-days: 7
 
   # -----------------------------------------------------------------
@@ -74,26 +72,25 @@ jobs:
         run: npm ci
 
       - name: Run Frontend Tests
+        # Vitest 결과를 JUnit XML 포맷으로 출력 (--reporter=junit --outputFile=...)
         run: npm test -- --reporter=junit --outputFile=./test-results.xml
 
-      # 🚨 Upload 3: Frontend Test Results 업로드
       - name: Upload Frontend Test Results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: frontend-test-results
-          # ❌ 오류 수정: working-directory가 ./frontend 이므로 'frontend/' 제거
-          path: test-results.xml
+          path: frontend/test-results.xml
 
       - name: Build Frontend (For Deployment)
         run: npm run build
+        working-directory: ./frontend
 
-      # 🚨 Upload 4: Deployment DIST 업로드
       - name: Upload Frontend Deployment Artifact
         uses: actions/upload-artifact@v4
         with:
           name: deploy-frontend-dist
-          path: dist/
+          path: frontend/dist/
           retention-days: 7
 
   # -----------------------------------------------------------------
@@ -105,32 +102,36 @@ jobs:
     if: always()
 
     steps:
+      # 1. Download Backend Jacoco Report
       - name: Download Backend Jacoco Report
         uses: actions/download-artifact@v4
         with:
           name: backend-jacoco-report
-          path: ./report_data/backend
+          path: ./report_data/backend # 다운로드 위치 지정
 
+      # 2. Download Frontend JUnit Report (경로 수정을 위해 다운로드 위치 지정)
       - name: Download Frontend JUnit Report
         uses: actions/download-artifact@v4
         with:
           name: frontend-test-results
-          path: ./report_data/frontend
+          path: ./report_data/frontend # 다운로드 위치 지정
 
+      # 3. Publish Backend Coverage Report (Jacoco)
       - name: Publish Backend Coverage Report (Jacoco)
         uses: madrapps/jacoco-report@v1.6.1
         with:
-          # 다운로드 위치 + 아티팩트 이름 폴더 + 파일명
+          # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
           paths: ./report_data/backend/backend-jacoco-report/jacocoTestReport.xml
           title: 'Backend Code Coverage'
           min-coverage-overall: '40'
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      # 4. Publish Frontend Test Results (JUnit)
       - name: Publish Frontend Test Results (JUnit)
         uses: dorny/test-reporter@v1
         with:
           name: Frontend Test Results
-          # 다운로드 위치 + 아티팩트 이름 폴더 + 파일명
+          # 🚨 수정: 다운로드 경로 + 아티팩트 이름 폴더 + 파일명으로 경로를 명확하게 지정
           path: 'report_data/frontend/frontend-test-results/test-results.xml'
           reporter: junit
           token: ${{ secrets.GITHUB_TOKEN }}
