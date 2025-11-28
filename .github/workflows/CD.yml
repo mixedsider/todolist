@@ -157,14 +157,17 @@ jobs:
             else
               echo "No active Java process found."
             fi
-
-            chmod 744 "$FINAL_JAR_PATH"
+            
+            if [ -z "$TARGET_JAR_NAME" ]; then
+              echo "❌ Error: No JAR file found in $DEPLOY_PATH"
+              exit 1
+            fi
 
             nohup java \
               -Dspring.datasource.url="$DB_URL" \
               -Dspring.datasource.username="$DB_USER" \
               -Dspring.datasource.password="$DB_PASS" \
-              -jar "$FINAL_JAR_PATH" \
+              -jar "$TARGET_JAR_NAME" \
               > "$DEPLOY_PATH/app.log" 2>&1 &
 
             echo "Deployment command executed. Log path: $DEPLOY_PATH/app.log"
