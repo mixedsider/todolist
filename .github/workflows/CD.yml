@@ -104,11 +104,13 @@ jobs:
       # ----------------------------------------------------------
       - name: Stop, Rename, and Restart Backend Application (via Bastion)
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          GITHUB_SHA: ${{ github.sha }}
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22 # Target Server SSH 포트 (기본 22)
+          port: 22
 
           proxy_host: ${{ secrets.BASTION_HOST }}
           proxy_username: ${{ secrets.BASTION_USER }}
@@ -116,44 +118,36 @@ jobs:
           proxy_key: ${{ secrets.SSH_PRIVATE_KEY }}
 
           script: |
-            # 1. 환경 변수 설정
             DB_URL="${{ secrets.DB_URL }}"
             DB_USER="${{ secrets.DB_USERNAME }}"
             DB_PASS="${{ secrets.DB_PASSWORD }}"
             DEPLOY_USER="${{ secrets.DEPLOY_USER }}"
-            
-            # 배포 디렉터리 (사용자 환경에 맞게 수정 필요)
+
             DEPLOY_PATH="/home/${DEPLOY_USER}/backend"
-            
-            # 💡 [수정 포인트 1] GitHub Context 문법(${{ }})을 사용하여 해시 값을 직접 주입
-            TARGET_JAR_NAME="backend-${{ github.sha }}.jar"
+
+            # 여기서는 GitHub Expression 쓰지 말고, env 로 전달된 GITHUB_SHA 사용
+            TARGET_JAR_NAME="backend-${GITHUB_SHA}.jar"
             FINAL_JAR_PATH="${DEPLOY_PATH}/${TARGET_JAR_NAME}"
 
             echo "Deployment started..."
             echo "Target Jar: $FINAL_JAR_PATH"
 
-            # 2. 배포 디렉터리로 이동 및 최신 업로드 파일 확인
             cd "$DEPLOY_PATH" || { echo "Deploy path not found"; exit 1; }
 
-            # scp로 올라온 파일 중 가장 최신 .jar 찾기 (방금 올린 파일)
-            # 'ls -t'는 시간순 정렬, 'head -n 1'은 가장 상위 1개
             NEW_JAR=$(ls -t *.jar | head -n 1)
 
             if [ -z "$NEW_JAR" ]; then
               echo "❌ Error: No JAR file found in $DEPLOY_PATH"
               exit 1
             fi
-            
+
             echo "Found new JAR: $NEW_JAR"
 
-            # 3. 파일명 변경 (backend-0.0.1.jar -> backend-{hash}.jar)
-            # 파일이 다를 경우에만 복사/이동
             if [ "$NEW_JAR" != "$TARGET_JAR_NAME" ]; then
               cp "$NEW_JAR" "$TARGET_JAR_NAME"
               echo "Copied $NEW_JAR to $TARGET_JAR_NAME"
             fi
 
-            # 4. 기존 프로세스 종료
             CURRENT_PID=$(ps -ef | grep java | grep "$DEPLOY_PATH" | grep -v grep | awk '{print $2}')
 
             if [ -n "$CURRENT_PID" ]; then
@@ -164,16 +158,13 @@ jobs:
               echo "No active Java process found."
             fi
 
-            # 5. 새 JAR 실행
             if [ ! -f "$FINAL_JAR_PATH" ]; then
               echo "❌ Error: Target JAR file ($FINAL_JAR_PATH) not found!"
               exit 1
             fi
 
-            echo "Starting application..."
             chmod 744 "$FINAL_JAR_PATH"
 
-            # 💡 [수정 포인트 2] 실행 시 절대 경로 사용 및 nohup 처리
             nohup java \
               -Dspring.datasource.url="$DB_URL" \
               -Dspring.datasource.username="$DB_USER" \
@@ -182,5 +173,5 @@ jobs:
               > "$DEPLOY_PATH/app.log" 2>&1 &
 
             echo "Deployment command executed. Log path: $DEPLOY_PATH/app.log"
-            exit 0
-
+            exit
+      
