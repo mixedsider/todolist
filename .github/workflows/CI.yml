@@ -22,6 +22,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # ... (Set up Java, Code Style, Run Tests) ...
+      - name: Gradlew chmod +x
+        run: chmod +x ./gradlew
+
+      - name: Build Spring Boot JAR (For Deployment)
+        run: ./gradlew bootJar
+
 
       # 테스트 실행 (이 단계에서 build/reports/jacoco/jacocoTestReport.xml 파일이 생성됨)
       - name: Run Backend Tests and Generate Jacoco Report
