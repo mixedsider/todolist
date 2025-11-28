@@ -116,13 +116,13 @@ jobs:
           # 기존 스크립트 그대로 사용
           script: |
             # 1. 환경 변수 정의
-            DB_URL="${{ env.DB_URL }}"
-            DB_USER="${{ env.DB_USERNAME }}"
-            DB_PASS="${{ env.DB_PASSWORD }}"
-            DB_PORT="${{ env.DB_PORT }}"
+            DB_URL="${{ vars.DB_URL }}"
+            DB_USER="${{ vars.DB_USERNAME }}"
+            DB_PASS="${{ vars.DB_PASSWORD }}"
+            DB_PORT="${{ vars.DB_PORT }}"
             DATABASE="${{vars.DATABASE}}"
 
-            DEPLOY_PATH="/home/${{ secrets.DEPLOY_USER }}/backend"
+            DEPLOY_PATH="~/backend"
             JAR_NAME="backend.jar"
 
             # 기존 프로세스 종료
