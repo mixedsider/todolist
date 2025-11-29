@@ -6,6 +6,7 @@ spring:
   web:
     resources:
       add-mappings: false
+      welcome-page: classpath:/static/index.html
 
 management:
   endpoint:
